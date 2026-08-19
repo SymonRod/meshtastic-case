@@ -57,6 +57,12 @@ a scatto prendono il pannello per gli angoli.
 |---|
 | ![Clip d'angolo con il pannello inserito](mount_clip.png) |
 
+Come si aggancia, in sezione attraverso una linguetta: il pannello scende, la
+rampa a 45° apre la linguetta verso l'esterno di 1.5 mm, e appena il dorso
+appoggia sul piano il dente scatta sopra la faccia anteriore.
+
+![Sezione: pannello che scende e pannello agganciato](mount_clip_section.png)
+
 ## File
 
 - `build_case.py` — sorgente parametrico, unica fonte di verità
