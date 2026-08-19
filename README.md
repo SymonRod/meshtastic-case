@@ -37,31 +37,34 @@ connettore, ecc.) è documentato in [`CLAUDE.md`](CLAUDE.md).
 ## Montatura del pannello solare
 
 Accessorio opzionale ([`build_mount.py`](build_mount.py)) per appendere un
-pannello da ~170 × 170 mm **senza forarlo e senza toccare la custodia**: il
-telaio si infila fra le teste delle sei viti M3 e il coperchio, e quattro clip
-a scatto prendono il pannello per gli angoli.
+pannello da 170 × 170 mm **senza forarlo e senza toccare la custodia**: **un
+pezzo solo** che si infila fra le teste delle sei viti M3 e il coperchio, e
+prende il pannello per i quattro angoli con otto linguette a scatto.
 
-![Telaio e clip montati sulla custodia](mount_assembly.png)
+![La montatura montata sulla custodia](mount_assembly.png)
 
-- Telaio a **H su tutte e sei le viti**: tre viti in fila, da sole, non
+- **Un solo pezzo, nessuna vite in più**: le sei M3 del coperchio diventano
+  M3×12 e basta (le teste stanno annegate nello svaso, il pannello ci appoggia
+  sopra)
+- **Anello chiuso su tutte e sei le viti**: tre viti in fila, da sole, non
   bloccherebbero la rotazione attorno alla loro linea
-- Appoggia **solo sui sei lug**, gli unici punti in cui il coperchio è
-  sostenuto dalla vite: il coperchio non viene inarcato e la tenuta non si apre
-- **Quattro clip identiche** (lo stesso pezzo ruotato di 0/90/180/270°), a
-  scatto, con aletta per aprirle a mano
-- Registrabili di ±12 mm in diagonale: **pannelli da 153 a 187 mm di lato**
-  senza ristampare il telaio
-- Tutto prismatico: **nessun supporto** in stampa
+- Del coperchio tocca **solo i lug e la striscia sopra le pareti**, mai la
+  campata centrale: il coperchio non viene inarcato e la tenuta non si apre
+- **Otto linguette a scatto** (due per angolo), con aletta per aprirle a mano
+- Tutto estruso in verticale dal piano di stampa: **nessun supporto**, nessun
+  piedino, appoggio pieno sul piatto
+- Il pannello è di misura **fissa**: si cambia `PANEL_W`/`PANEL_H` e si
+  ristampa
 
-| Dettaglio di una clip |
+| Dettaglio di una testa d'angolo |
 |---|
-| ![Clip d'angolo con il pannello inserito](mount_clip.png) |
+| ![Testa d'angolo con montante e linguette](mount_corner.png) |
 
 Come si aggancia, in sezione attraverso una linguetta: il pannello scende, la
 rampa a 45° apre la linguetta verso l'esterno di 1.5 mm, e appena il dorso
 appoggia sul piano il dente scatta sopra la faccia anteriore.
 
-![Sezione: pannello che scende e pannello agganciato](mount_clip_section.png)
+![Sezione: pannello che scende e pannello agganciato](mount_corner_section.png)
 
 ## File
 
@@ -70,8 +73,9 @@ appoggia sul piano il dente scatta sopra la faccia anteriore.
 - `verify_case.py` — rigenera e verifica la geometria via ray-casting su
   punti campione (cava O-ring, spalle, cavità, fori)
 - `build_mount.py` — montatura del pannello solare
-- `panel_frame.stl` ×1, `panel_clip.stl` ×4 — output della montatura
-- `verify_mount.py`, `render_mount.py` — verifica e render della montatura
+- `panel_mount.stl` ×1 — output della montatura
+- `verify_mount.py` — verifica della montatura (topologia + ~560 punti)
+- `render_mount.py`, `render_corner_section.py` — render di controllo
 
 ## Rigenerare gli STL
 
@@ -92,9 +96,9 @@ nella cartella corrente.
 - Guarnizione: corda di silicone Ø3 mm, giuntata a colla nella cava
 - Chiusura: 6 inserti filettati M3 a caldo + viti M3×10 a testa bombata
 - Fissaggio: 4 viti/bulloni M4 nelle alette
-- Montatura: telaio con i piedini sul piatto, clip con il piano d'appoggio sul
-  piatto; niente supporti. Con la montatura le sei viti diventano **M3×16**
-  (il telaio aggiunge 7.5 mm di pacco), più 4 M3×10 autofilettanti per le clip
+- Montatura: un pezzo solo, appoggiato sul piatto così com'è; niente supporti,
+  ~38 g in PETG. Con la montatura le sei viti diventano **M3×12** (impegno 5.3
+  mm nell'inserto) e non serve nient'altro
 
 ## Licenza
 

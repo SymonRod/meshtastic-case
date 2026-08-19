@@ -1,276 +1,252 @@
-"""Verifica geometrica della montatura: rigenera e sonda punti campione.
+"""Verifica geometrica di panel_mount.stl.
 
-Stesso metodo di verify_case.py (BVHTree + conteggio intersezioni): sul telaio
-e sulle clip il render non dice niente di utile, quello che conta e` se il
-pannello ci sta, se le linguette sono davvero libere di flettere e se i
-piedini cadono sui lug del coperchio.
+Rigenera il pezzo eseguendo build_mount.py nella stessa sessione Blender e poi
+lo sonda con test di appartenenza per ray-cast (BVHTree + conteggio
+intersezioni), piu` due controlli topologici che il ray-cast non vede:
+
+  - il pezzo e` UN SOLO solido connesso (se una linguetta si stacca dal corpo
+    lo slicer stampa un coriandolo e la scatola resta senza aggancio);
+  - il pezzo e` chiuso (ogni spigolo su due facce).
 
     blender --background --factory-startup --python verify_mount.py
 """
-import contextlib
-import math
-import io
 import os
+import sys
 
 import bmesh
 import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.abspath(__file__)) or "/home/rod/meshtastic-case"
+
+# esegue build_mount.py: costanti e mesh vengono da li`, non sono riscritte qui
 src = open(os.path.join(HERE, "build_mount.py")).read()
-g = {"__name__": "__main__", "__file__": os.path.join(HERE, "build_mount.py")}
-with contextlib.redirect_stdout(io.StringIO()):
-    exec(compile(src, "build_mount.py", "exec"), g)
+G = {"__name__": "__main__", "__file__": os.path.join(HERE, "build_mount.py")}
+exec(compile(src, "build_mount.py", "exec"), G)
 
-frame, clip = g["frame"], g["clip"]
+mount = G["mount"]
+BASE_T = G["BASE_T"]
+PANEL_HX, PANEL_HY = G["PANEL_HX"], G["PANEL_HY"]
+PANEL_T, PANEL_CLR, PANEL_FIT = G["PANEL_T"], G["PANEL_CLR"], G["PANEL_FIT"]
+PANEL_BACK, LIP_Z0, LIP_Z1 = G["PANEL_BACK"], G["LIP_Z0"], G["LIP_Z1"]
+LIP_OVER, LIP_START = G["LIP_OVER"], G["LIP_START"]
+CORNER_L, CORNER_W, GAP = G["CORNER_L"], G["CORNER_W"], G["GAP"]
+TONGUE_T, TONGUE_L = G["TONGUE_T"], G["TONGUE_L"]
+PAD_IN, PAD_S = G["PAD_IN"], G["PAD_S"]
+SCREW_D, CBORE_D, CBORE_DEPTH = G["SCREW_D"], G["CBORE_D"], G["CBORE_DEPTH"]
+LUG_XY, LUG_CY, LUG_R = G["LUG_XY"], G["LUG_CY"], G["LUG_R"]
+CORNERS, CASE_HX = G["CORNERS"], G["CASE_HX"]
+END_X, END_W, SPINE_W = G["END_X"], G["END_W"], G["SPINE_W"]
+mapper = G["mapper"]
+
+bpy.context.view_layer.update()
+bm = bmesh.new()
+bm.from_mesh(mount.data)
+bm.transform(mount.matrix_world)
+bvh = BVHTree.FromBMesh(bm)
+
+RAY = Vector((0.13, 0.29, 0.948)).normalized()   # direzione "storta" apposta:
+                                                 # niente facce parallele
 
 
-def tree(ob):
-    bm = bmesh.new()
-    bm.from_mesh(ob.data)
-    bmesh.ops.triangulate(bm, faces=bm.faces)
-    t = BVHTree.FromBMesh(bm)
-    return t, bm
-
-
-def inside(t, p, d=Vector((0.0, 0.0, 1.0))):
-    n, org = 0, Vector(p) + d * 1e-4
-    while True:
-        hit = t.ray_cast(org, d)
+def inside(p):
+    """Test di appartenenza: conta le intersezioni verso l'alto."""
+    origin = Vector(p)
+    hits = 0
+    pos = origin.copy()
+    for _ in range(64):
+        hit = bvh.ray_cast(pos + RAY * 1e-4, RAY)
         if hit[0] is None:
-            return n % 2 == 1
-        n += 1
-        org = hit[0] + d * 1e-4
+            break
+        hits += 1
+        pos = hit[0]
+    return hits % 2 == 1
 
 
-def stats(ob):
-    bm = bmesh.new()
-    bm.from_mesh(ob.data)
-    non_manifold = sum(1 for e in bm.edges if not e.is_manifold)
-    vol = bm.calc_volume(signed=True)
-    seen, shells = set(), 0
-    for v in bm.verts:
-        if v in seen:
+FAILS = []
+NCHECK = [0]
+
+
+def want(state, p, what):
+    NCHECK[0] += 1
+    got = inside(p)
+    if got != state:
+        FAILS.append(f"{what}: ({p[0]:.2f}, {p[1]:.2f}, {p[2]:.2f}) "
+                     f"{'vuoto' if not got else 'pieno'}, atteso "
+                     f"{'pieno' if state else 'vuoto'}")
+
+
+def solid(p, what):
+    want(True, p, what)
+
+
+def empty(p, what):
+    want(False, p, what)
+
+
+# ------------------------------------------------------- topologia del pezzo
+
+def shells(bmesh_obj):
+    """Componenti connesse per spigoli."""
+    seen = set()
+    count = 0
+    for f in bmesh_obj.faces:
+        if f.index in seen:
             continue
-        shells += 1
-        stack = [v]
+        count += 1
+        stack = [f]
+        seen.add(f.index)
         while stack:
-            w = stack.pop()
-            if w in seen:
-                continue
-            seen.add(w)
-            for e in w.link_edges:
-                stack.append(e.other_vert(w))
-    bm.free()
-    return non_manifold, vol, shells
+            cur = stack.pop()
+            for e in cur.edges:
+                for nb in e.link_faces:
+                    if nb.index not in seen:
+                        seen.add(nb.index)
+                        stack.append(nb)
+    return count
 
 
-fails = []
+bm.faces.ensure_lookup_table()
+n_shells = shells(bm)
+open_edges = [e for e in bm.edges if len(e.link_faces) != 2]
+print(f"topologia: {len(bm.verts)} vertici, {len(bm.faces)} facce, "
+      f"{n_shells} guscio/i, {len(open_edges)} spigoli aperti")
+if n_shells != 1:
+    FAILS.append(f"il pezzo e` in {n_shells} gusci separati: non e` un pezzo solo")
+if open_edges:
+    FAILS.append(f"{len(open_edges)} spigoli non-manifold/aperti")
 
+# ------------------------------------------------------------ corpo e anello
 
-def probe(t, label, pts, want):
-    bad = [p for p in pts if inside(t, p) != want]
-    tag = "dentro" if want else "fuori"
-    ok = not bad
-    print(f"  [{'ok ' if ok else 'FAIL'}] {label}: {len(pts)} punti, atteso {tag}"
-          + ("" if ok else f" -- {len(bad)} sbagliati, es. {tuple(round(c, 2) for c in bad[0])}"))
-    if not ok:
-        fails.append(label)
+for lx, ly in LUG_XY:
+    # foro vite passante
+    for z in (0.5, BASE_T - CBORE_DEPTH - 0.5):
+        empty((lx, ly, z), "foro M3")
+    # svaso sopra
+    empty((lx + CBORE_D / 2.0 - 0.6, ly, BASE_T - 0.5), "svaso M3")
+    # sotto lo svaso c'e` ancora materiale (e` quello che la vite tira)
+    solid((lx + CBORE_D / 2.0 - 0.6, ly, BASE_T - CBORE_DEPTH - 0.5), "cielo dello svaso")
+    # materiale attorno al foro
+    for dx, dy in ((SCREW_D / 2.0 + 1.0, 0.0), (0.0, SCREW_D / 2.0 + 1.0)):
+        solid((lx + dx, ly + dy, 1.0), "trave attorno alla vite")
 
+# le travi corrono da un capo all'altro sopra i lug (saltando i fori)
+for x in range(-60, 61, 5):
+    if min(abs(x - lx) for lx in G["LUG_CX"]) < CBORE_D / 2.0 + 0.5:
+        continue
+    for sy in (-1, 1):
+        solid((x, sy * LUG_CY, 1.5), "trave longitudinale")
 
-# ------------------------------------------------------------------ topologia
-print("topologia")
-for name, ob in (("telaio", frame), ("clip", clip)):
-    nm, vol, shells = stats(ob)
-    ok = nm == 0 and shells == 1 and vol > 0
-    print(f"  [{'ok ' if ok else 'FAIL'}] {name}: {len(ob.data.polygons)} facce, "
-          f"spigoli non-manifold {nm}, gusci {shells}, volume {vol / 1000:.2f} cm3 "
-          f"(~{vol * 1.27 / 1000:.0f} g in PETG)")
-    if not ok:
-        fails.append(f"topologia {name}")
+# traverse d'estremita`: chiudono l'anello e stanno FUORI dalla scatola
+for sx in (-1, 1):
+    for y in (-20.0, 0.0, 20.0):
+        solid((sx * END_X, y, BASE_T / 2.0), "traversa d'estremita`")
+    empty((sx * (CASE_HX - 1.0), 0.0, BASE_T / 2.0), "sopra il coperchio, in mezzeria")
+    # il bordo interno della traversa non sconfina sulla scatola
+    empty((sx * (END_X - END_W / 2.0 - 0.4), 0.0, BASE_T / 2.0), "aria fra traversa e scatola")
 
-# --------------------------------------------------------------------- clip
-CZ0, PZ, PT = g["CLIP_Z0"], g["PANEL_Z"], g["PANEL_T"]
-LIP_Z0, TZ1 = g["LIP_Z0"], g["TONGUE_Z1"]
-CLR, T_T, BLK, TL = g["PANEL_CLR"], g["TONGUE_T"], g["CLIP_BLK"], g["TONGUE_L"]
-LIP_START, LIP_OVER = g["LIP_START"], g["LIP_OVER"]
-tc, bmc = tree(clip)
-mid_z = (CZ0 + PZ) / 2.0
-tongue_mid = -CLR - T_T / 2.0          # mezzeria dello spessore della linguetta
-lip_z = (LIP_Z0 + TZ1) / 2.0
-panel_z = PZ + PT / 2.0                # dentro lo spessore del pannello
-us = [BLK + 2.0, BLK + 6.0, BLK + 10.0, BLK + 14.0, BLK + 18.0]
+# il pezzo non appoggia sulla campata centrale del coperchio: a z=0, dentro
+# l'impronta della scatola, c'e` materiale solo nella fascia delle travi
+for x in (-40.0, -20.0, 0.0, 20.0, 40.0):
+    for y in (0.0, 10.0, 20.0, 25.0):
+        empty((x, y, 0.2), "campata centrale del coperchio libera")
+        empty((x, -y, 0.2), "campata centrale del coperchio libera")
 
-print("clip: linguette")
-# la linguetta esiste per tutta la sua lunghezza, su entrambi i bordi
-probe(tc, "corpo della linguetta", [(u, tongue_mid, z) for u in us for z in (CZ0 + 1, mid_z, TZ1 - 1)]
-      + [(tongue_mid, u, z) for u in us for z in (CZ0 + 1, mid_z, TZ1 - 1)], True)
-# ...ed e` SEPARATA dal piano: se l'unione l'avesse incollata al piano non
-# flette piu` e lo scatto diventa una frattura.
-gap = [(u, v, z) for u in us for v in (-CLR + 0.2, 0.4, 1.0)
-       for z in (CZ0 + 0.5, mid_z, PZ - 0.5)]
-probe(tc, "aria fra linguetta e piano", gap + [(v, u, z) for (u, v, z) in gap], False)
+# bracci diagonali continui dal lug d'angolo alla testa
+for sx, sy in CORNERS:
+    ax, ay = sx * 52.0, sy * LUG_CY
+    ex, ey = sx * (PANEL_HX - G["HEAD_IN"]), sy * (PANEL_HY - G["HEAD_IN"])
+    for t in [i / 10.0 for i in range(1, 11)]:   # t=0 e` il foro del lug
+        solid((ax + (ex - ax) * t, ay + (ey - ay) * t, 1.5), "braccio")
 
-print("clip: tasca del pannello")
+# ------------------------------------------------------- alloggiamento pannello
+# Lo spazio che occupa il pannello (z da BASE_T a PANEL_BACK, dentro il
+# perimetro rientrato di PANEL_CLR) deve essere COMPLETAMENTE libero: se
+# qualcosa ci sporge dentro, il pannello non ci appoggia in piano.
+zmid = BASE_T + PANEL_T / 2.0
+for i in range(41):
+    t = -1.0 + 2.0 * i / 40.0
+    for edge in range(4):
+        d = PANEL_HX - 1.0
+        if edge == 0:
+            p = (t * d, PANEL_HY - 1.0, zmid)
+        elif edge == 1:
+            p = (t * d, -(PANEL_HY - 1.0), zmid)
+        elif edge == 2:
+            p = (PANEL_HX - 1.0, t * d, zmid)
+        else:
+            p = (-(PANEL_HX - 1.0), t * d, zmid)
+        empty(p, "volume del pannello libero")
+for x in (-60.0, 0.0, 60.0):
+    for y in (-60.0, 0.0, 60.0):
+        empty((x, y, zmid), "volume del pannello libero")
 
+# appoggio: subito sotto il pannello, agli angoli e lungo le diagonali,
+# ci deve essere materiale
+for sx, sy in CORNERS:
+    L = mapper(sx, sy)
+    for u, v in ((PAD_IN + 1.0, PAD_IN + 1.0), (PAD_S - 2.0, PAD_IN + 1.0),
+                 (PAD_IN + 1.0, PAD_S - 2.0), (8.0, 8.0)):
+        x, y = L(u, v)
+        solid((x, y, BASE_T - 0.5), "piano d'appoggio d'angolo")
 
-def dp(s, off, z):
-    """Punto a distanza `s` dall'angolo lungo la diagonale locale (u = v) e
-    `off` in perpendicolare. Asola, svaso e cava della guida corrono tutti
-    lungo quella diagonale: campionarli in (u, v) a occhio porta solo a
-    prendere il vuoto dell'asola e a leggere fallimenti che non ci sono."""
-    h = 0.70710678
-    return (s * h - off * h, s * h + off * h, z)
+# ------------------------------------------------------------------ montanti
+for sx, sy in CORNERS:
+    L = mapper(sx, sy)
+    for swap in (False, True):
+        def P(u, v, _s=swap):
+            return L(v, u) if _s else L(u, v)
+        # montante: pieno fino in cima, fuori dal bordo del pannello
+        for u in (0.0, CORNER_L / 2.0, CORNER_L - 1.0):
+            x, y = P(u, -PANEL_CLR - CORNER_W / 2.0)
+            solid((x, y, LIP_Z1 - 0.5), "montante d'angolo")
+        # fra montante e bordo del pannello: PANEL_CLR d'aria
+        x, y = P(CORNER_L / 2.0, -PANEL_CLR / 2.0)
+        empty((x, y, zmid), "aria fra pannello e montante")
 
+# ----------------------------------------------------------------- linguette
+for sx, sy in CORNERS:
+    L = mapper(sx, sy)
+    for swap in (False, True):
+        def P(u, v, _s=swap):
+            return L(v, u) if _s else L(u, v)
+        vmid = -PANEL_CLR - TONGUE_T / 2.0
+        # corpo della linguetta, da terra fino in cima
+        for u in (CORNER_L + 2.0, CORNER_L + TONGUE_L / 2.0, CORNER_L + TONGUE_L - 1.0):
+            for z in (0.5, BASE_T, LIP_Z1 - 0.3):
+                x, y = P(u, vmid)
+                solid((x, y, z), "linguetta")
+        # ARIA fra linguetta e piano d'appoggio: se sparisce, l'unione le
+        # salda e la linguetta non flette piu`
+        for u in (CORNER_L + 2.0, CORNER_L + TONGUE_L / 2.0, CORNER_L + TONGUE_L - 1.0):
+            for z in (0.5, BASE_T - 0.5):
+                x, y = P(u, (PAD_IN - PANEL_CLR) / 2.0)   # meta` del gap
+                empty((x, y, z), "aria fra linguetta e piano")
+        # dente: scavalca il bordo del pannello. Si sonda appena sopra LIP_Z0,
+        # dove la rampa a 45 gradi non ha ancora mangiato il profilo.
+        for u in (CORNER_L + LIP_START + 1.0, CORNER_L + TONGUE_L - 1.0):
+            x, y = P(u, 0.6)
+            solid((x, y, LIP_Z0 + 0.3), "dente")
+            # sotto il dente ci passa il pannello
+            empty((x, y, zmid), "sotto il dente: passa il pannello")
+        # prima di LIP_START il dente non c'e` ancora (e` la` che la linguetta
+        # deve poter flettere senza toccare il pannello)
+        x, y = P(CORNER_L + 2.0, 0.6)
+        empty((x, y, LIP_Z0 + 0.3), "dente assente sulla radice")
+        # rampa a 45 gradi: in alto, verso l'interno, il dente e` tagliato
+        x, y = P(CORNER_L + TONGUE_L - 2.0, LIP_OVER - 0.2)
+        empty((x, y, LIP_Z1 - 0.2), "invito a 45 gradi sul dente")
 
-# lo spazio del pannello e` libero fino al dente...
-probe(tc, "sede del pannello", [(u, v, panel_z) for u in (3.0, 8.0, 15.0, 25.0)
-                                for v in (1.0, 5.0, 15.0, 25.0)], False)
-# ...il piano d'appoggio sotto c'e' (fuori dall'asola, che corre in diagonale)...
-probe(tc, "piano d'appoggio", [dp(s, off, PZ - 0.8) for s in (6.0, 14.0, 22.0, 29.0)
-                               for off in (-9.0, -5.0, 5.0, 9.0)], True)
-# ...e il dente scavalca il pannello (e` cio` che lo trattiene in Z). Il punto
-# va preso sotto la rampa a 45 gradi, non sopra.
-lip_us = [BLK + LIP_START + 2.0, BLK + LIP_START + 6.0, BLK + TL - 1.0]
-probe(tc, "dente sopra il pannello", [(u, LIP_OVER - 0.4, LIP_Z0 + 0.3) for u in lip_us]
-      + [(LIP_OVER - 0.4, u, LIP_Z0 + 0.3) for u in lip_us], True)
-# la rampa d'invito: sopra il dente, verso l'interno, non c'e` materiale
-probe(tc, "rampa d'invito", [(u, LIP_OVER - 0.3, TZ1 - 0.3) for u in lip_us]
-      + [(LIP_OVER - 0.3, u, TZ1 - 0.3) for u in lip_us], False)
-# fermo laterale rigido all'angolo (montante), non affidato alle linguette
-probe(tc, "montante d'angolo", [(-CLR - 1.5, -CLR - 1.5, z) for z in (12.0, mid_z, PZ + 1, TZ1 - 0.5)]
-      + [(-CLR - 2.8, -CLR - 0.2, CZ0 + 0.5)], True)
+# ------------------------------------------------------------------- niente
+# materiale sotto il piano di stampa
+for sx, sy in CORNERS:
+    empty((sx * PANEL_HX, sy * PANEL_HY, -0.5), "niente sotto z=0")
 
-print("clip: guida e asola")
-S = g["LOCAL_S"]
-RH, RW = g["RIB_H"], g["RIB_W"]
-ADJ, CB = g["SLOT_ADJ"], g["CBORE_W"]
-# la cava della guida e` vuota su tutta la corsa, e la nervatura ci entra
-probe(tc, "cava della guida", [dp(s, off, CZ0 + RH / 2.0)
-                               for s in (2.0, 10.0, S, 26.0, 30.0)
-                               for off in (-RW / 2.0 + 0.2, 0.0, RW / 2.0 - 0.2)], False)
-# fianco della cava: appena fuori dalla larghezza della nervatura c'e` materiale
-probe(tc, "fianco della guida", [dp(s, off, CZ0 + RH / 2.0) for s in (10.0, S, 26.0)
-                                 for off in (-RW / 2.0 - 1.5, RW / 2.0 + 1.5)], True)
-# asola passante lungo tutta la corsa di registrazione
-probe(tc, "asola di registrazione", [dp(S + d, 0.0, z) for d in (-ADJ + 0.5, 0.0, ADJ - 0.5)
-                                     for z in (CZ0 + RH + 0.5, (CZ0 + PZ) / 2.0, PZ - 0.5)], False)
-# web fra il cielo della cava e il fondo dello svaso, ai fianchi dell'asola:
-# e` il materiale su cui tira la vite della clip
-probe(tc, "web attorno all'asola", [dp(S + d, off, (CZ0 + RH + g["CBORE_Z"]) / 2.0)
-                                    for d in (-ADJ + 2.0, 0.0, ADJ - 2.0)
-                                    for off in (-CB / 2.0 + 0.4, CB / 2.0 - 0.4)], True)
-# lo svaso c'e' (la testa bombata ci sparisce dentro, sotto il pannello)
-probe(tc, "svaso della testa", [dp(S + d, off, g["CBORE_Z"] + 0.5)
-                                for d in (-ADJ + 1.0, 0.0, ADJ - 1.0)
-                                for off in (-CB / 2.0 + 0.4, 0.0, CB / 2.0 - 0.4)], False)
-
-# --------------------------------------------------------------------- telaio
-print("telaio")
-tf, bmf = tree(frame)
-LUG_XY, ARM_Z0, ARM_Z1 = g["LUG_XY"], g["ARM_Z0"], g["ARM_Z1"]
-PZ0, PZ1, FOOT_H = g["PLATE_Z0"], g["PLATE_Z1"], g["FOOT_H"]
-LUG_R, SCREW_D, PILOT_D = g["LUG_R"], g["SCREW_D"], g["PILOT_D"]
-# i sei piedini ci sono e sono forati
-probe(tf, "piedini", [(lx + dx, ly + dy, FOOT_H / 2.0) for (lx, ly) in LUG_XY
-                      for (dx, dy) in ((LUG_R - 0.6, 0), (-LUG_R + 0.6, 0),
-                                       (0, LUG_R - 0.6), (0, -LUG_R + 0.6))], True)
-probe(tf, "passanti M3", [(lx + d, ly, z) for (lx, ly) in LUG_XY
-                          for d in (0.0, SCREW_D / 2.0 - 0.3)
-                          for z in (0.3, FOOT_H + 0.5, PZ1 - 0.3)], False)
-# il piano non tocca il coperchio fra un piedino e l'altro: sotto PLATE_Z0 e
-# fuori dai piedini dev'essere tutto vuoto (a parte i bracci, che partono da 2)
-probe(tf, "aria sotto il piano", [(x, y, FOOT_H - 0.5) for x in (-26.0, 26.0)
-                                  for y in (-31.6, 0.0, 31.6)]
-      + [(0.0, y, FOOT_H - 0.5) for y in (-20.0, 20.0)], False)
-# travi e traverso: il telaio e` UN pezzo, il traverso e` cio` che lega i due lati
-probe(tf, "travi longitudinali", [(x, sy * 31.6, (PZ0 + PZ1) / 2.0)
-                                  for x in (-56.0, -26.0, 26.0, 56.0) for sy in (-1, 1)], True)
-probe(tf, "traverso centrale", [(0.0, y, (PZ0 + PZ1) / 2.0)
-                                for y in (-28.0, -15.0, 0.0, 15.0, 28.0)], True)
-# bracci: pieni per tutto lo sbalzo, su tutta l'altezza
-for sx, sy in g["CORNERS"]:
-    (ax, ay), (ex, ey) = g["arm_axis"](sx, sy)
-    pts = [(ax + (ex - ax) * k, ay + (ey - ay) * k, z)
-           for k in (0.15, 0.35, 0.55, 0.75, 0.95)
-           for z in (ARM_Z0 + 0.5, (ARM_Z0 + ARM_Z1) / 2.0, ARM_Z1 - 0.5)]
-    probe(tf, f"braccio {sx:+d}{sy:+d}", pts, True)
-# piastrino, nervatura e foro pilota
-RIB_L, RIB_H, RIB_W = g["RIB_L"], g["RIB_H"], g["RIB_W"]
-for sx, sy in g["CORNERS"]:
-    _, (ex, ey) = g["arm_axis"](sx, sy)
-    gx, gy = sx * g["GX"], sy * g["GY"]
-    probe(tf, f"nervatura {sx:+d}{sy:+d}",
-          [(ex + gx * d, ey + gy * d, ARM_Z1 + RIB_H / 2.0)
-           for d in (-RIB_L / 2.0 + 1.0, -4.0, 4.0, RIB_L / 2.0 - 1.0)], True)
-    probe(tf, f"foro pilota {sx:+d}{sy:+d}",
-          [(ex, ey, z) for z in (ARM_Z0 + 0.3, (ARM_Z0 + ARM_Z1) / 2.0, ARM_Z1 + RIB_H - 0.3)], False)
-
-# ------------------------------------------------------- montaggio delle clip
-# Le quattro clip devono essere LO STESSO PEZZO, ruotato di 0/90/180/270. Vale
-# perche` la clip e` simmetrica rispetto alla propria bisettrice e la guida e`
-# a 45 gradi esatti. Qui si monta davvero: si trasforma la clip nei quattro
-# angoli e si controlla che la nervatura del telaio entri nella cava e che il
-# foro pilota caschi nell'asola.
-print("montaggio delle clip sul telaio")
-import mathutils
-
-ANG = {(-1, -1): 0.0, (1, -1): 90.0, (1, 1): 180.0, (-1, 1): 270.0}
-for (sx, sy), deg in ANG.items():
-    _, (ex, ey) = g["arm_axis"](sx, sy)
-    cx, cy = sx * g["PANEL_HX"], sy * g["PANEL_HY"]
-    M = (mathutils.Matrix.Translation((cx, cy, 0.0))
-         @ mathutils.Matrix.Rotation(math.radians(deg), 4, 'Z'))
-    ob = clip.copy()
-    ob.data = clip.data.copy()
-    ob.matrix_world = M
-    bpy.context.collection.objects.link(ob)
-    ob.data.transform(M)
-    ob.matrix_world = mathutils.Matrix.Identity(4)
-    tcc, _ = tree(ob)
-    # la nervatura sta nella cava (= fuori dal solido della clip)
-    rib_pts = [(ex + g["GX"] * sx * d, ey + g["GY"] * sy * d, ARM_Z1 + RIB_H / 2.0)
-               for d in (-RIB_L / 2.0 + 1.0, -4.0, 0.0, 4.0, RIB_L / 2.0 - 1.0)]
-    probe(tcc, f"nervatura nella cava, angolo {sx:+d}{sy:+d}", rib_pts, False)
-    # ...ma i fianchi della cava ci sono, se no non fa da antirotazione
-    side = [(ex + g["GX"] * sx * d - g["GY"] * sy * o, ey + g["GY"] * sy * d + g["GX"] * sx * o,
-             ARM_Z1 + RIB_H / 2.0)
-            for d in (-4.0, 4.0) for o in (-RIB_W / 2.0 - 1.5, RIB_W / 2.0 + 1.5)]
-    probe(tcc, f"fianchi della cava, angolo {sx:+d}{sy:+d}", side, True)
-    # l'asse del foro pilota casca nell'asola su tutta la corsa
-    adj = g["SLOT_ADJ"]
-    slot = [(ex + g["GX"] * sx * d, ey + g["GY"] * sy * d, z)
-            for d in (-adj + 0.5, 0.0, adj - 0.5) for z in (ARM_Z1 + RIB_H + 0.5, 14.0)]
-    probe(tcc, f"asola sul foro pilota, angolo {sx:+d}{sy:+d}", slot, False)
-    bpy.data.objects.remove(ob, do_unlink=True)
-
-# ------------------------------------------------- telaio contro il coperchio
-lid_path = os.path.join(HERE, "case_lid.stl")
-if os.path.exists(lid_path):
-    print("telaio contro il coperchio (case_lid.stl)")
-    before = set(bpy.data.objects)
-    bpy.ops.wm.stl_import(filepath=lid_path)
-    lid = [o for o in bpy.data.objects if o not in before][0]
-    tl, bml = tree(lid)
-    LID_TOP = max(v.co.z for v in lid.data.vertices)
-    # ogni piedino deve cadere INTERAMENTE sul lug: e` l'unico punto in cui il
-    # coperchio e` sostenuto dalla vite. Fuori dal lug il coperchio e` una
-    # piastra da 3.2 e il piedino la inarcherebbe.
-    pts = [(lx + dx, ly + dy, LID_TOP - 0.4) for (lx, ly) in LUG_XY
-           for (dx, dy) in ((LUG_R - 0.2, 0), (-LUG_R + 0.2, 0),
-                            (0, LUG_R - 0.2), (0, -LUG_R + 0.2),
-                            (LUG_R * 0.7, LUG_R * 0.7), (-LUG_R * 0.7, -LUG_R * 0.7))]
-    probe(tl, "piedini dentro il profilo del lug", pts, True)
-    # e niente del telaio deve scendere sotto il piano d'appoggio
-    zmin = min(v.co.z for v in frame.data.vertices)
-    ok = abs(zmin) < 1e-6
-    print(f"  [{'ok ' if ok else 'FAIL'}] quota minima del telaio {zmin:.3f} "
-          f"(dev'essere 0: sotto c'e` il coperchio)")
-    if not ok:
-        fails.append("quota minima telaio")
-else:
-    print("telaio contro il coperchio: case_lid.stl assente, salto")
-
-print()
-print("VERIFICA FALLITA:", ", ".join(fails)) if fails else print("verifica: tutto ok")
+print(f"{NCHECK[0]} punti campione, {len(FAILS)} falliti")
+for f in FAILS[:25]:
+    print("  !!", f)
+bm.free()
+if FAILS:
+    sys.exit(1)
+print("verifica montatura: OK")

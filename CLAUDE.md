@@ -27,17 +27,23 @@ contando le alette.
 
 ## Montatura del pannello solare
 
-Pezzi separati, in `build_mount.py`. La scatola **non viene toccata**: nessun
-foro nuovo, nessun inserto nuovo, nessuna quota di `build_case.py` modificata.
+**Un pezzo solo**, in `build_mount.py`. La scatola **non viene toccata**:
+nessun foro nuovo, nessun inserto nuovo, nessuna quota di `build_case.py`
+modificata.
 
-- `panel_frame.stl` ×1 — telaio a H che si infila **fra le teste delle viti e
-  il coperchio**, usando tutte e sei le M3 esistenti, con quattro bracci verso
-  gli angoli del pannello.
-- `panel_clip.stl` ×4 — clip d'angolo a scatto, **lo stesso pezzo ruotato di
-  0/90/180/270°**, registrabile lungo la diagonale.
+- `panel_mount.stl` ×1 — anello rettangolare che si infila **fra le teste
+  delle viti e il coperchio** usando tutte e sei le M3 esistenti, quattro
+  bracci diagonali e quattro teste d'angolo con le linguette a scatto.
 
-Ingombro del telaio 168.6 × 168.6 × 10.6 mm (~36 g), clip 36.8 × 36.8 × 11.2
-(~8 g l'una). Il dorso del pannello finisce 16 mm sopra il coperchio.
+Ingombro 183.6 × 183.6 × 11.2 mm, ~38 g in PETG a riempimento 30%. Il pannello
+appoggia 7 mm sopra il coperchio.
+
+Il pannello è di **misura fissa** (`PANEL_W`, `PANEL_H`). È la scelta che ha
+permesso il pezzo unico: la versione precedente aveva telaio + 4 clip
+registrabili, e asole, guide a 45°, piastrini, svasi e quattro viti
+autofilettanti esistevano **tutti e soli** per rendere le clip riposizionabili.
+Se un giorno serve la regolabilità, si rimette quella meccanica — non si
+cerchi di ottenerla deformando questo pezzo.
 
 ## File
 
@@ -46,10 +52,11 @@ Ingombro del telaio 168.6 × 168.6 × 10.6 mm (~36 g), clip 36.8 × 36.8 × 11.2
 - `case_base.stl`, `case_lid.stl` — output rigenerati a ogni run.
 - `verify_case.py` — rigenera e sonda ~150 punti campione (vedi *Verifica*).
 - `build_mount.py` — montatura del pannello, stessa filosofia: quote in cima,
-  `panel_frame.stl` e `panel_clip.stl` rigenerati a ogni run.
-- `verify_mount.py` — ~380 punti campione sulla montatura, incluso il montaggio
-  delle quattro clip ruotate sul telaio.
+  `panel_mount.stl` rigenerato a ogni run.
+- `verify_mount.py` — topologia (un solo guscio, chiuso) + ~560 punti campione
+  sulla montatura.
 - `render_mount.py` — render di controllo dell'assieme.
+- `render_corner_section.py` — sezione della testa d'angolo: come si aggancia.
 
 ## Rigenerare
 
@@ -216,56 +223,76 @@ zero ed esporta i due STL in questa cartella. Ignora l'errore
 
 ### Montatura del pannello (`build_mount.py`)
 
-- Il telaio è **un pezzo solo a H** e usa **tutte e sei** le viti. Non
-  spezzarlo in due staffe a U, una per lato: le tre viti di un lato sono
-  **allineate**, e tre punti in fila non bloccano la rotazione attorno alla
-  loro linea. Due staffe separate farebbero cerniera e il pannello
-  sbatterebbe. È il traverso centrale a chiudere il vincolo.
-- Il telaio appoggia **solo sui sei lug**, con piedini di raggio esattamente
-  `LUG_R`: sono gli unici punti in cui il coperchio è spesso e sostenuto dalla
-  vite. Fra un piedino e l'altro il piano passa a `FOOT_H` di distanza e non
-  tocca. Un appoggio diffuso sul coperchio lo inarcherebbe, che è precisamente
-  ciò che apre la tenuta.
-- Il pacco sotto la testa della vite è `FOOT_H + PLATE_T` = 7.5 mm. Con
-  coperchio 3.2 e inserto profondo 6 la vite giusta è **M3×16** (impegno 5.3
-  mm). Se cambi `FOOT_H` o `PLATE_T` rifai il conto: l'impegno deve restare fra
+- È **un pezzo solo**: anello + bracci + teste d'angolo con le linguette. Non
+  tornare a telaio e clip separate. Le clip erano separate per essere
+  *registrabili*, e la registrazione (asole, guida a 45°, piastrini, svasi,
+  quattro viti autofilettanti) era metà della complessità del file. Il pannello
+  ora è di misura fissa: si cambiano `PANEL_W`/`PANEL_H` e si ristampa.
+- L'anello usa **tutte e sei** le viti ed è **chiuso**. Non spezzarlo in due
+  staffe a U, una per lato: le tre viti di un lato sono **allineate**, e tre
+  punti in fila non bloccano la rotazione attorno alla loro linea. Due staffe
+  separate farebbero cerniera e il pannello sbatterebbe. Sono le traverse
+  d'estremità a chiudere il vincolo.
+- Le traverse d'estremità stanno a `END_X` = 62, cioè **fuori dall'ingombro
+  della scatola** (`CASE_HX` = 58.9). È deliberato: così del coperchio il pezzo
+  tocca solo la striscia sopra i lug e sopra le pareti da 6.4 mm — materiale
+  sostenuto — e mai la campata centrale, che è quella che inarcandosi aprirebbe
+  la tenuta. **Non portare le traverse verso il centro** per accorciare il
+  pezzo.
+- **Niente piedini.** La versione precedente teneva il piano a `FOOT_H` = 3.5
+  sopra il coperchio, appoggiato su sei piedini: geometricamente corretto e
+  **instampabile**, perché un piano di 170 mm sospeso su sei colonnine Ø9.2
+  vuole i supporti sotto tutto, e capovolgendo il pezzo finiscono in aria i
+  bracci. Qui il corpo parte da z = 0 e appoggia sul piatto per intero.
+- Il corpo è **spesso `BASE_T` = 7 e la sua faccia superiore è il piano
+  d'appoggio del pannello**: le teste delle viti stanno annegate in uno svaso
+  Ø6.4 profondo 3.5 e restano 1.3 mm sotto il pannello. Sotto la testa ci sono
+  3.5 di corpo + 3.2 di coperchio, quindi la vite è **M3×12** (impegno 5.3 mm).
+  Se cambi `BASE_T` o `CBORE_DEPTH` rifai il conto: l'impegno deve restare fra
   ~4.5 e `INSERT_DEPTH`, oltre la vite tocca il fondo del foro e non tira più.
 - `check_case_interface()` rilegge `build_case.py` a ogni run e si ferma se
   `LUG_CX/LUG_CY/LUG_R/SCREW_D/INSERT_DEPTH/LID_T` sono cambiati. Le costanti
   sono duplicate apposta invece di importare `build_case`: importarlo lo
   eseguirebbe. **Non trasformarlo in un import.**
-- I bracci sono alti 7 mm e larghi 9: il vento carica il pannello **normale al
-  suo piano**, quindi flette i bracci in Z, e in Z la sezione conta al
-  quadrato. Allargarli serve poco, abbassarli è quello che li rompe. Con un
-  pannello 170 × 170 a 100 km/h sono ~12 N per angolo su uno sbalzo di 43.6 mm
-  → ~7 MPa nel materiale, con le fibre nel verso giusto.
-- **Le quattro clip sono lo stesso pezzo.** Vale perché la clip è simmetrica
-  rispetto alla propria bisettrice *e* perché la guida di registrazione è a
-  **45° esatti**, non lungo la diagonale del pannello. Con la guida sulla
-  diagonale vera di un pannello rettangolare servirebbero due versioni
-  specchiate. **Non riportare `GX, GY` alla diagonale del pannello.**
-- Il pannello si aggancia premendolo giù: due linguette per clip, ognuna
-  20 × 2.4 mm con un dente da 1.5. Deformazione allo scatto 1.35% (il PETG
-  regge ~3% a breve termine), forza ~13 N per linguetta, ~26 N per angolo. Se
-  allunghi il dente o accorci la linguetta ricontrolla il numero stampato dal
-  report: sopra il 3% la linguetta non scatta, si spezza.
-- Fra la linguetta e il piano d'appoggio c'è **1 mm d'aria** (`plate_in`). Se
-  il piano arrivasse a toccarla, l'unione booleana **le salderebbe insieme** e
-  la linguetta smetterebbe di flettere: lo scatto diventerebbe una frattura. Un
-  test apposito (`aria fra linguetta e piano`) sonda quello spazio.
+- I bracci sono alti 7 mm (tutto `BASE_T`) e larghi 9: il vento carica il
+  pannello **normale al suo piano**, quindi flette i bracci in Z, e in Z la
+  sezione conta al quadrato. Allargarli serve poco, assottigliare `BASE_T` è
+  quello che li rompe. Con un pannello 170 × 170 a 100 km/h sono ~12 N per
+  angolo su uno sbalzo di 49.1 mm → ~8 MPa nel materiale, con le fibre nel
+  verso giusto.
+- Le quattro teste d'angolo sono **lo stesso disegno** in coordinate locali
+  (`mapper(sx, sy)`: origine sull'angolo del pannello, u e v verso l'interno),
+  e ogni testa è simmetrica rispetto alla propria bisettrice. Lavorare in quel
+  frame è ciò che tiene il file corto: si scrive una testa, non quattro.
+- Il pannello si aggancia premendolo giù: due linguette per angolo, otto in
+  tutto, ognuna 24 × 2.4 mm con un dente da 1.5. Deformazione allo scatto
+  0.94% (il PETG regge ~3% a breve termine), forza ~8 N per linguetta, ~15 N
+  per angolo. Se allunghi il dente o accorci la linguetta ricontrolla il numero
+  stampato dal report: sopra il 3% la linguetta non scatta, si spezza.
+- Le linguette sono **alte tutto il pezzo e partono dal piano di stampa**:
+  flettono **in pianta**, non in Z. È questo che le rende stampabili senza
+  supporti in un pezzo unico — una linguetta corta sospesa a metà altezza, come
+  quella della vecchia clip, qui sarebbe in aria. Nota che l'altezza entra
+  linearmente nella forza di scatto e **non** nella deformazione: sono
+  `TONGUE_T` e `TONGUE_L` a governare lo strain, l'altezza governa solo quanto
+  è dura.
+- Fra la linguetta e il piano d'appoggio c'è `GAP` = 1.2 mm d'aria. Se il piano
+  arrivasse a toccarla, l'unione booleana **le salderebbe insieme** e la
+  linguetta smetterebbe di flettere: lo scatto diventerebbe una frattura. Il
+  piano si ferma perciò a `PAD_IN` dentro il bordo del pannello, e un test
+  apposito (`aria fra linguetta e piano`) sonda quello spazio.
 - Il fermo laterale d'angolo è un **montante rigido**, separato dalle
   linguette: le linguette trattengono in Z, non in pianta.
-- Tutti i pezzi sono **unioni di prismi convessi estrusi in Z**: niente
-  sottosquadri, si stampano senza un solo supporto. L'unica sporgenza è il
-  dente (1.5 mm) e la sua rampa a 45°. **Non introdurre feature non prismatiche**
-  senza guardare cosa succede in stampa.
-- La clip si registra di ±12 mm in diagonale (pannelli da 153 a 187 mm di
-  lato). La vite della clip è una **M3×10 autofilettante** nel foro Ø2.9
-  passante del piastrino, con la testa bombata nello svaso: il cielo dello
-  svaso sta 3 mm sotto il piano del pannello, quindi la testa non tocca. La
-  registrazione si fa **prima** di agganciare il pannello: dopo, le viti ci
-  finiscono sotto.
-- Il telaio si smonta con il pannello attaccato; per aprire la scatola si
+- Il pezzo è **unione di prismi convessi estrusi in Z da z = 0**: niente
+  sottosquadri, si stampa senza un solo supporto e con adesione piena. L'unica
+  sporgenza è il dente (1.5 mm) e la sua rampa a 45°. **Non introdurre feature
+  non prismatiche** senza guardare cosa succede in stampa.
+- `verify_mount.py` controlla per primo che il pezzo sia **un solo guscio
+  chiuso**. Non è pignoleria: le otto linguette e il piano si sfiorano a 1.2 mm,
+  e basta un segno sbagliato perché una resti staccata — lo slicer stamperebbe
+  un coriandolo e il pannello non avrebbe aggancio, senza che nessun test di
+  appartenenza per punti se ne accorga.
+- La montatura si smonta con il pannello attaccato; per aprire la scatola si
   tolgono le sei viti e viene via tutto insieme.
 
 ## Verifica

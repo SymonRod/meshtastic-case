@@ -1,20 +1,23 @@
-"""Montatura per pannello solare ~170x170, appesa alle 6 viti M3 del coperchio.
+"""Montatura per pannello solare, appesa alle 6 viti M3 del coperchio.
 
-Parametrico. Due pezzi da stampare:
+UN PEZZO SOLO da stampare:
 
-  panel_frame.stl  x1  telaio a H: si infila fra le teste delle viti e il
-                       coperchio usando TUTTE E SEI le M3, e porta quattro
-                       bracci verso gli angoli del pannello.
-  panel_clip.stl   x4  clip d'angolo a scatto, identiche, registrabili lungo
-                       la diagonale: cambiando pannello si spostano invece di
-                       ristampare il telaio.
+  panel_mount.stl  x1  anello rettangolare sulle sei viti + quattro bracci
+                       diagonali + quattro teste d'angolo con le linguette a
+                       scatto che trattengono il pannello.
 
 La scatola non viene toccata: nessun foro nuovo, nessun inserto nuovo. Le
-uniche viti in piu` sono quattro M3x10 autofilettanti per bloccare le clip.
+uniche viti sono le sei M3 del coperchio, che diventano M3x12 (le teste
+stanno annegate nello svaso, cosi` il pannello ci appoggia sopra).
+
+Il pannello e` di misura FISSA (PANEL_W x PANEL_H qui sotto). Cambiando
+pannello si ricompila e si ristampa: e` quello che ha permesso di buttare via
+asole, guide di registrazione, piastrini e viti autofilettanti.
 
 Sistema di riferimento: X e Y come in build_case.py (origine al centro della
 scatola), ma **z = 0 e` la faccia superiore del coperchio**, cioe` z = 32.1 in
-coordinate scatola. Gli STL vengono esportati con z = 0 sul piano di stampa.
+coordinate scatola. z = 0 e` anche il piano di stampa: tutto il pezzo e` una
+estrusione verticale che parte da li`.
 
     blender --background --factory-startup --python build_mount.py
 """
@@ -36,78 +39,53 @@ LUG_R = 4.6
 SCREW_D = 3.4
 LID_T = 3.2
 INSERT_DEPTH = 6.0
+CASE_HX = 58.9                        # meta` lunghezza esterna della scatola
 
 # ------------------------------------------------------------------ pannello
 PANEL_W, PANEL_H = 170.0, 170.0       # ingombro del pannello (X, Y)
 PANEL_T = 2.4                         # spessore del laminato in vetroresina
-PANEL_FIT = 0.3                       # aria in Z fra dorso e labbro della clip
-PANEL_CLR = 0.4                       # aria in pianta fra bordo e pareti della clip
+PANEL_FIT = 0.3                       # aria in Z fra dorso e dente
+PANEL_CLR = 0.4                       # aria in pianta fra bordo e montanti
 
-# --------------------------------------------------------------------- telaio
-FOOT_H = 3.5                          # piedini che appoggiano sui sei lug
-PLATE_T = 4.0                         # spessore del piano del telaio
-SPINE_W = 2 * LUG_R                   # larghezza (Y) delle due travi longitudinali
-CROSS_W = 12.0                        # larghezza (X) del traverso centrale
-# Il traverso serve a rendere il telaio UN pezzo solo: le tre viti di un lato
-# sono allineate e da sole non bloccano la rotazione attorno a quella linea.
-# Con tutte e sei le viti il vincolo e` completo.
+# ------------------------------------------------------------------- corpo
+BASE_T = 7.0                          # spessore del corpo = quota d'appoggio
+                                      # del pannello sopra il coperchio
+SPINE_W = 2 * LUG_R                   # larghezza (Y) delle travi sulle viti
+END_X = 62.0                          # asse delle traverse d'estremita`
+END_W = 6.0                           # larghezza (X) delle traverse
+ARM_W = 9.0                           # larghezza dei bracci diagonali
+CBORE_D = 6.4                         # svaso per la testa bombata M3
+CBORE_DEPTH = 3.5                     # profondita` dello svaso dal dorso
 
-ARM_W = 9.0                           # larghezza dei bracci
-ARM_Z0, ARM_Z1 = 2.0, 9.0             # i bracci sono piu` alti del piano: il
-                                      # carico del vento li flette in Z, e in Z
-                                      # la sezione conta al quadrato.
-CLIP_INSET = 20.0                     # distanza dall'angolo del pannello, in
-                                      # diagonale, del centro di registrazione
-PAD_L, PAD_W = 26.0, 12.0             # piastrino di testa del braccio
-RIB_L, RIB_W, RIB_H = 20.0, 3.0, 1.6  # guida antirotazione sul piastrino
-PILOT_D = 2.9                         # foro passante per M3x10 autofilettante
-
-# ----------------------------------------------------------------- clip
-PANEL_Z = 16.0                        # dorso del pannello sopra il coperchio
-CLIP_Z0 = ARM_Z1                      # la clip appoggia sul piastrino
-CLIP_BLK = 10.0                       # lato del blocco rigido d'angolo
-CLIP_PLATE = 30.0                     # lato del piano d'appoggio del pannello
-CLIP_CHAMF_S = 44.0                   # smusso del piano: taglia oltre u+v
-CLIP_WALL = 3.0                       # spessore delle pareti d'angolo
+# ------------------------------------------------------------ testa d'angolo
+CORNER_W = 3.0                        # spessore dei montanti d'angolo
+CORNER_L = 14.0                       # lunghezza dei montanti lungo il bordo
+PAD_S = 26.0                          # estensione del piano d'appoggio
+PAD_CHAMF = 38.0                      # taglio dell'angolo lontano (u + v <=)
+GAP = 1.2                             # aria fra linguetta e resto del pezzo
 TONGUE_T = 2.4                        # spessore della linguetta elastica
-TONGUE_L = 20.0                       # sbalzo libero della linguetta
+TONGUE_L = 24.0                       # sbalzo libero della linguetta
+TONGUE_ROOT = 4.0                     # quanto la radice entra nella testa
 LIP_OVER = 1.5                        # quanto il dente scavalca il pannello
 LIP_H = 1.5                           # altezza del dente
-LIP_START = 10.0                      # da dove parte il dente lungo la linguetta
+LIP_START = 10.0                      # da dove parte il dente lungo lo sbalzo
 TAB_L, TAB_W = 4.0, 4.0               # aletta per aprire la linguetta a mano
-SLOT_ADJ = 12.0                       # corsa di registrazione (per lato)
-CBORE_W = 6.4                         # svaso per la testa bombata M3
-CBORE_Z = 13.0                        # fondo dello svaso
 
 # ------------------------------------------------------------------- derivate
 LUG_XY = [(lx, sy * LUG_CY) for lx in LUG_CX for sy in (-1, 1)]
 CORNERS = [(sx, sy) for sx in (-1, 1) for sy in (-1, 1)]
 
 PANEL_HX, PANEL_HY = PANEL_W / 2.0, PANEL_H / 2.0
-# La registrazione corre a 45 GRADI ESATTI, non lungo la diagonale del
-# pannello. E` cio` che rende le quattro clip lo stesso pezzo: la clip e`
-# simmetrica rispetto alla propria bisettrice, quindi le quattro posizioni si
-# ottengono ruotandola di 0/90/180/270 gradi -- ma solo se la guida e`
-# anch'essa a 45 gradi. Con la guida lungo la diagonale di un pannello
-# rettangolare le due clip di un lato andrebbero specchiate, cioe`
-# stampate in due versioni. Su pannello rettangolare la corsa allarga W e H
-# della stessa quantita`, che e` esattamente quel che serve.
-GX = GY = math.sqrt(0.5)
+PANEL_BACK = BASE_T + PANEL_T                       # dorso del pannello
+LIP_Z0 = PANEL_BACK + PANEL_FIT                     # sotto del dente
+LIP_Z1 = LIP_Z0 + LIP_H                             # cima del pezzo
+PAD_IN = GAP - PANEL_CLR                            # quanto il piano entra
+                                                    # sotto il bordo pannello
+SCREW_STACK = (BASE_T - CBORE_DEPTH) + LID_T        # materiale sotto la testa
+SCREW_L = 12.0                                      # M3x12
+SCREW_BITE = SCREW_L - SCREW_STACK                  # impegno nell'inserto
 
-PLATE_Z0, PLATE_Z1 = FOOT_H, FOOT_H + PLATE_T
-FOOT_STACK = FOOT_H + PLATE_T                       # materiale sotto la testa vite
-SCREW_L = LID_T + FOOT_STACK + (INSERT_DEPTH - 0.7) # lunghezza vite consigliata
-
-PANEL_FRONT = PANEL_Z + PANEL_T
-LIP_Z0 = PANEL_FRONT + PANEL_FIT
-TONGUE_Z1 = LIP_Z0 + LIP_H
-CLIP_H = TONGUE_Z1 - CLIP_Z0
-
-# centro di registrazione: rientrato di CLIP_INSET dall'angolo del pannello,
-# a 45 gradi. LOCAL_S e` la stessa quota vista dalla clip.
-MOUNT_X = PANEL_HX - CLIP_INSET * GX
-MOUNT_Y = PANEL_HY - CLIP_INSET * GY
-LOCAL_S = CLIP_INSET                                # ascissa diagonale dall'angolo
+HEAD_IN = 10.0                        # dove il braccio incontra l'angolo
 
 # ---------------------------------------------------------------- helpers
 # Copiati da build_case.py di proposito: build_case.py resta intoccato e
@@ -157,9 +135,9 @@ def _mesh_object(name, verts, faces):
 def prism(name, poly, z0, z1):
     """Estrusione solida di un poligono CONVESSO fra z0 e z1.
 
-    Tutti i pezzi sono unioni di prismi convessi: cosi` ogni faccia e` piana,
-    il solver EXACT non ha ngon concavi da triangolare e -- cosa che qui conta
-    di piu` -- non c'e` un solo sottosquadro in stampa."""
+    Tutto il pezzo e` unione di prismi convessi estrusi in Z e appoggiati al
+    piano di stampa: nessun sottosquadro, nessun supporto. L'unica eccezione
+    e` il dente delle linguette, che sporge di 1.5 mm ed e` autoportante."""
     n = len(poly)
     verts = [(x, y, z0) for (x, y) in poly] + [(x, y, z1) for (x, y) in poly]
     faces = [tuple(range(n)), tuple(range(2 * n - 1, n - 1, -1))]
@@ -211,8 +189,8 @@ def fuse(target, tools):
 
 def check_case_interface():
     """Rilegge build_case.py e verifica che le quote dell'interfaccia (viti del
-    coperchio) siano ancora quelle. Se qualcuno tocca i lug, il telaio non ci
-    va piu` sopra: meglio fermarsi qui che scoprirlo in stampa."""
+    coperchio) siano ancora quelle. Se qualcuno tocca i lug, la montatura non
+    ci va piu` sopra: meglio fermarsi qui che scoprirlo in stampa."""
     src_path = os.path.join(OUT_DIR, "build_case.py")
     if not os.path.exists(src_path):
         print("!! build_case.py non trovato: interfaccia non verificata")
@@ -246,151 +224,140 @@ def check_case_interface():
     print("interfaccia con build_case.py: ok")
 
 
-# ------------------------------------------------------------------- telaio
+# ------------------------------------------------------------- testa d'angolo
+# Frame locale dell'angolo: origine sull'ANGOLO DEL PANNELLO, u lungo un bordo
+# e v lungo l'altro, entrambi verso l'interno del pannello. Il pannello occupa
+# u >= 0, v >= 0. z e` quello globale (0 = faccia del coperchio = piano di
+# stampa). I quattro angoli sono lo stesso disegno con (sx, sy) diversi.
 
 
-def arm_axis(sx, sy):
-    """Radice (sul lug d'angolo) e testa (centro di registrazione) del braccio."""
-    ax, ay = sx * LUG_CX[-1], sy * LUG_CY
-    ex, ey = sx * MOUNT_X, sy * MOUNT_Y
-    return (ax, ay), (ex, ey)
+def mapper(sx, sy):
+    def L(u, v):
+        return (sx * (PANEL_HX - u), sy * (PANEL_HY - v))
+    return L
 
 
-def build_frame():
+def corner_parts(sx, sy):
+    """Testa d'angolo: piano d'appoggio, montanti rigidi, due linguette."""
+    L = mapper(sx, sy)
+    cw, cl, clr = CORNER_W, CORNER_L, PANEL_CLR
+    t_in, t_out = -clr, -clr - TONGUE_T          # facce della linguetta
+    u0 = cl - TONGUE_ROOT                        # radice, dentro la testa
+    u1 = cl + TONGUE_L                           # punta della linguetta
     parts = []
 
-    # piano a H: due travi sui lug + traverso centrale. Il traverso passa
-    # sopra il coperchio a PLATE_Z0 di distanza, non lo tocca.
+    # blocco d'angolo: quadrato pieno che porta i montanti e le radici delle
+    # linguette. Arriva solo a CORNER_L in u e v: oltre, la fascia esterna al
+    # bordo del pannello e` riservata alle linguette.
+    parts.append(prism(f"blk_{sx:+d}{sy:+d}",
+                       [L(-cw, -cw), L(cl, -cw), L(cl, cl), L(-cw, cl)],
+                       0.0, BASE_T))
+
+    # piano d'appoggio del pannello, con l'angolo lontano smussato. Si ferma a
+    # PAD_IN dal bordo: fra lui e la linguetta restano GAP mm d'aria. Se si
+    # toccassero, l'unione li salderebbe e la linguetta non flette piu`.
+    parts.append(prism(f"pad_{sx:+d}{sy:+d}",
+                       [L(PAD_IN, PAD_IN), L(PAD_S, PAD_IN),
+                        L(PAD_S, PAD_CHAMF - PAD_S), L(PAD_CHAMF - PAD_S, PAD_S),
+                        L(PAD_IN, PAD_S)],
+                       0.0, BASE_T))
+
+    for swap in (False, True):
+        def P(u, v, _s=swap):
+            return L(v, u) if _s else L(u, v)
+        tag = f"{'v' if swap else 'u'}_{sx:+d}{sy:+d}"
+
+        # montante: fermo laterale rigido in pianta, separato dalle linguette.
+        parts.append(prism(f"post_{tag}",
+                           [P(-cw, -cw), P(cl, -cw), P(cl, t_in), P(-cw, t_in)],
+                           0.0, LIP_Z1))
+        # linguetta elastica: lamella verticale alta tutto il pezzo, quindi
+        # appoggiata al piano di stampa. Flette IN PIANTA, non in Z.
+        parts.append(prism(f"tongue_{tag}",
+                           [P(u0, t_out), P(u1, t_out), P(u1, t_in), P(u0, t_in)],
+                           0.0, LIP_Z1))
+        # dente: scavalca il pannello di LIP_OVER
+        parts.append(prism(f"lip_{tag}",
+                           [P(cl + LIP_START, t_in), P(u1, t_in),
+                            P(u1, LIP_OVER), P(cl + LIP_START, LIP_OVER)],
+                           LIP_Z0, LIP_Z1))
+        # aletta per aprire la linguetta con l'unghia
+        parts.append(prism(f"tab_{tag}",
+                           [P(u1 - TAB_L, t_out - TAB_W), P(u1, t_out - TAB_W),
+                            P(u1, t_out), P(u1 - TAB_L, t_out)],
+                           0.0, LIP_Z1))
+    return parts
+
+
+def corner_ramps(sx, sy):
+    """Invito a 45 gradi sul dente: la rampa che apre le linguette quando si
+    preme il pannello. Prisma triangolare lungo il bordo."""
+    L = mapper(sx, sy)
+    tools = []
+    tri = [(LIP_OVER + 0.2, LIP_Z0 - 0.2), (LIP_OVER + 0.2, LIP_Z1 + 0.2),
+           (LIP_OVER - (LIP_Z1 - LIP_Z0) - 0.2, LIP_Z1 + 0.2)]
+    a0 = CORNER_L + LIP_START - 0.5
+    a1 = CORNER_L + TONGUE_L + 0.5
+    for swap in (False, True):
+        verts = []
+        for a in (a0, a1):
+            for (b, z) in tri:
+                x, y = L(b, a) if swap else L(a, b)
+                verts.append((x, y, z))
+        faces = [(0, 1, 2), (5, 4, 3), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)]
+        tools.append(_mesh_object(f"ramp_{swap}_{sx:+d}{sy:+d}", verts, faces))
+    return tools
+
+
+# --------------------------------------------------------------------- pezzo
+
+
+def build_mount():
+    parts = []
+
+    # anello rettangolare: due travi longitudinali sulle sei viti + due
+    # traverse d'estremita`. Le traverse passano OLTRE la scatola in X
+    # (END_X - END_W/2 > CASE_HX), quindi del coperchio il pezzo tocca solo la
+    # striscia sopra i lug e sopra le pareti: mai la campata centrale.
+    # L'anello e` chiuso: nessuna cerniera possibile (tre viti in fila da sole
+    # non bloccherebbero la rotazione attorno alla loro linea).
+    ring_hx = END_X + END_W / 2.0
     for sy in (-1, 1):
-        parts.append(box("spine", (2 * (LUG_CX[-1] + LUG_R), SPINE_W, PLATE_T),
-                         (0.0, sy * LUG_CY, (PLATE_Z0 + PLATE_Z1) / 2.0)))
-    parts.append(box("cross", (CROSS_W, 2 * (LUG_CY + LUG_R), PLATE_T),
-                     (0.0, 0.0, (PLATE_Z0 + PLATE_Z1) / 2.0)))
+        parts.append(box("spine", (2 * ring_hx, SPINE_W, BASE_T),
+                         (0.0, sy * LUG_CY, BASE_T / 2.0)))
+    for sx in (-1, 1):
+        parts.append(box("end", (END_W, 2 * LUG_CY + SPINE_W, BASE_T),
+                         (sx * END_X, 0.0, BASE_T / 2.0)))
 
-    # piedini: appoggiano SOLO sui sei lug del coperchio, che sono gli unici
-    # punti in cui il coperchio e` spesso e sostenuto dalla vite.
-    for i, (lx, ly) in enumerate(LUG_XY):
-        parts.append(cyl(f"foot{i}", LUG_R, FOOT_H, (lx, ly, FOOT_H / 2.0)))
-
+    # bracci diagonali: dal lug d'angolo alla testa d'angolo.
     for sx, sy in CORNERS:
-        (ax, ay), (ex, ey) = arm_axis(sx, sy)
+        ax, ay = sx * LUG_CX[-1], sy * LUG_CY
+        ex, ey = sx * (PANEL_HX - HEAD_IN), sy * (PANEL_HY - HEAD_IN)
         dx, dy = ex - ax, ey - ay
         dl = math.hypot(dx, dy)
         ux, uy = dx / dl, dy / dl
-        # il braccio parte 3 mm dietro il lug per sovrapporsi alla trave
-        cx, cy = ax - 3.0 * ux, ay - 3.0 * uy
+        cx, cy = ax - 3.0 * ux, ay - 3.0 * uy   # 3 mm dentro la trave
         parts.append(prism(f"arm_{sx:+d}{sy:+d}",
                            rect((cx + ex) / 2.0, (cy + ey) / 2.0, ux, uy,
                                 dl + 3.0, ARM_W),
-                           ARM_Z0, ARM_Z1))
-        # piastrino e guida, orientati lungo la DIAGONALE (che e` la direzione
-        # di registrazione della clip), non lungo il braccio.
-        parts.append(prism(f"pad_{sx:+d}{sy:+d}",
-                           rect(ex, ey, sx * GX, sy * GY, PAD_L, PAD_W),
-                           ARM_Z0, ARM_Z1))
-        parts.append(prism(f"rib_{sx:+d}{sy:+d}",
-                           rect(ex, ey, sx * GX, sy * GY, RIB_L, RIB_W),
-                           ARM_Z1, ARM_Z1 + RIB_H))
+                           0.0, BASE_T))
+        parts += corner_parts(sx, sy)
 
-    frame = parts[0]
-    fuse(frame, parts[1:])
+    mount = parts[0]
+    fuse(mount, parts[1:])
 
-    # forature: sei passanti M3 + quattro fori pilota per le clip
-    tools = [cyl(f"sh{i}", SCREW_D / 2.0, PLATE_Z1 + 4.0, (lx, ly, PLATE_Z1 / 2.0))
-             for i, (lx, ly) in enumerate(LUG_XY)]
-    for sx, sy in CORNERS:
-        _, (ex, ey) = arm_axis(sx, sy)
-        tools.append(cyl(f"pil_{sx:+d}{sy:+d}", PILOT_D / 2.0, ARM_Z1 + RIB_H + 4.0,
-                         (ex, ey, (ARM_Z0 + ARM_Z1 + RIB_H) / 2.0)))
-    cut(frame, tools)
-    frame.name = "Panel_Frame"
-    return frame
-
-
-# --------------------------------------------------------------------- clip
-# Frame locale della clip: origine sull'angolo del pannello, u lungo un bordo
-# e v lungo l'altro, entrambi verso l'interno del pannello. Il pannello occupa
-# u >= 0, v >= 0. z e` quello globale (0 = faccia del coperchio).
-
-
-def build_clip():
-    w_in = -PANEL_CLR                      # faccia interna delle pareti
-    w_out = w_in - CLIP_WALL               # faccia esterna
-    t_in = -PANEL_CLR                      # faccia interna della linguetta
-    t_out = t_in - TONGUE_T
-    blk = CLIP_BLK
-    tongue_u1 = blk + TONGUE_L             # punta della linguetta
-    plate_in = PANEL_CLR + 1.0             # il piano si ferma 1 mm prima della
-                                           # linguetta: se la toccasse, l'unione
-                                           # la incollerebbe e non flette piu`.
-    parts = []
-
-    # blocco rigido d'angolo (piano d'appoggio + radice delle linguette)
-    parts.append(prism("blk", [(w_out, w_out), (blk, w_out), (blk, blk), (w_out, blk)],
-                       CLIP_Z0, PANEL_Z))
-    # montante d'angolo: fermo laterale rigido, non affidato alle linguette
-    parts.append(prism("post", [(w_out, w_out), (w_in, w_out), (w_in, w_in), (w_out, w_in)],
-                       CLIP_Z0, TONGUE_Z1))
-    # piano d'appoggio del pannello, con l'angolo lontano smussato
-    parts.append(prism("plate",
-                       [(plate_in, plate_in), (CLIP_PLATE, plate_in),
-                        (CLIP_PLATE, CLIP_CHAMF_S - CLIP_PLATE),
-                        (CLIP_CHAMF_S - CLIP_PLATE, CLIP_PLATE),
-                        (plate_in, CLIP_PLATE)],
-                       CLIP_Z0, PANEL_Z))
-
-    # due linguette elastiche, una per bordo: la clip e` simmetrica rispetto
-    # alla diagonale, quindi le quattro clip sono lo stesso pezzo ruotato.
-    for swap in (False, True):
-        def P(u, v, _s=swap):
-            return (v, u) if _s else (u, v)
-        tag = "v" if swap else "u"
-        parts.append(prism(f"tongue_{tag}",
-                           [P(blk - 4.0, t_out), P(tongue_u1, t_out),
-                            P(tongue_u1, t_in), P(blk - 4.0, t_in)],
-                           CLIP_Z0, TONGUE_Z1))
-        # dente: scavalca il pannello di LIP_OVER
-        parts.append(prism(f"lip_{tag}",
-                           [P(blk + LIP_START, t_in), P(tongue_u1, t_in),
-                            P(tongue_u1, LIP_OVER), P(blk + LIP_START, LIP_OVER)],
-                           LIP_Z0, TONGUE_Z1))
-        # aletta per aprire la linguetta con l'unghia
-        parts.append(prism(f"tab_{tag}",
-                           [P(tongue_u1 - TAB_L, t_out - TAB_W), P(tongue_u1, t_out - TAB_W),
-                            P(tongue_u1, t_out), P(tongue_u1 - TAB_L, t_out)],
-                           CLIP_Z0, TONGUE_Z1))
-
-    clip = parts[0]
-    fuse(clip, parts[1:])
-
+    # forature: sei passanti M3 con svaso per la testa bombata. La testa resta
+    # annegata, cosi` il pannello appoggia sulla faccia del corpo.
     tools = []
-    # invito a 45 gradi sul dente: e` la rampa che apre la linguetta quando si
-    # preme il pannello. Prisma triangolare lungo il bordo.
-    for swap in (False, True):
-        tri = [(LIP_OVER + 0.2, LIP_Z0 - 0.2), (LIP_OVER + 0.2, TONGUE_Z1 + 0.2),
-               (LIP_OVER - (TONGUE_Z1 - LIP_Z0) - 0.2, TONGUE_Z1 + 0.2)]
-        u0, u1 = blk + LIP_START - 0.5, tongue_u1 + 0.5
-        if swap:
-            verts = [(v, u, z) for u in (u0, u1) for (v, z) in tri]
-        else:
-            verts = [(u, v, z) for u in (u0, u1) for (v, z) in tri]
-        faces = [(0, 1, 2), (5, 4, 3), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)]
-        tools.append(_mesh_object(f"ramp_{swap}", verts, faces))
-
-    # guida antirotazione (cava che riceve la nervatura del piastrino) e asola
-    # di registrazione, entrambe lungo la diagonale locale u = v.
-    dl = CLIP_PLATE * 3.0
-    tools.append(prism("groove", rect(0.0, 0.0, 0.7071, 0.7071, dl, RIB_W + 0.3),
-                       CLIP_Z0 - 1.0, CLIP_Z0 + RIB_H + 0.2))
-    su, sv = LOCAL_S * 0.7071, LOCAL_S * 0.7071
-    tools.append(prism("slot", rect(su, sv, 0.7071, 0.7071, SCREW_D + 2 * SLOT_ADJ, SCREW_D),
-                       CLIP_Z0 - 1.0, PANEL_Z + 1.0))
-    tools.append(prism("cbore", rect(su, sv, 0.7071, 0.7071, CBORE_W + 2 * SLOT_ADJ, CBORE_W),
-                       CBORE_Z, PANEL_Z + 1.0))
-
-    cut(clip, tools)
-    clip.name = "Panel_Clip"
-    return clip
+    for i, (lx, ly) in enumerate(LUG_XY):
+        tools.append(cyl(f"sh{i}", SCREW_D / 2.0, BASE_T + 4.0, (lx, ly, BASE_T / 2.0)))
+        tools.append(cyl(f"cb{i}", CBORE_D / 2.0, CBORE_DEPTH + 2.0,
+                         (lx, ly, BASE_T - CBORE_DEPTH + (CBORE_DEPTH + 2.0) / 2.0)))
+    for sx, sy in CORNERS:
+        tools += corner_ramps(sx, sy)
+    cut(mount, tools)
+    mount.name = "Panel_Mount"
+    return mount
 
 
 # ------------------------------------------------------------------- export
@@ -399,33 +366,22 @@ def build_clip():
 clear_scene()
 check_case_interface()
 
-frame = weld(build_frame())
-clip = weld(build_clip())
-
-# in stampa: telaio con i piedini sul piatto, clip con il piano sul piatto
-for ob, dz in ((frame, 0.0), (clip, -CLIP_Z0)):
-    ob.location.z = dz
-bpy.context.view_layer.update()
+mount = weld(build_mount())
 
 os.makedirs(OUT_DIR, exist_ok=True)
-for ob, fname in ((frame, "panel_frame.stl"), (clip, "panel_clip.stl")):
-    bpy.ops.object.select_all(action="DESELECT")
-    ob.select_set(True)
-    bpy.context.view_layer.objects.active = ob
-    bpy.ops.wm.stl_export(filepath=os.path.join(OUT_DIR, fname),
-                          export_selected_objects=True, apply_modifiers=True)
-for ob in (frame, clip):
-    ob.location.z = 0.0
-bpy.context.view_layer.update()
+bpy.ops.object.select_all(action="DESELECT")
+mount.select_set(True)
+bpy.context.view_layer.objects.active = mount
+bpy.ops.wm.stl_export(filepath=os.path.join(OUT_DIR, "panel_mount.stl"),
+                      export_selected_objects=True, apply_modifiers=True)
 
 # -------------------------------------------------------------------- report
 
 E_PETG = 1800.0                       # modulo a flessione, MPa (ordine di grandezza)
-TONGUE_HZ = TONGUE_Z1 - CLIP_Z0
+RHO_PETG = 1.27e-3                    # g/mm3
 strain = 1.5 * LIP_OVER * TONGUE_T / TONGUE_L ** 2
-inertia = TONGUE_HZ * TONGUE_T ** 3 / 12.0
+inertia = LIP_Z1 * TONGUE_T ** 3 / 12.0
 force = 3.0 * E_PETG * inertia * LIP_OVER / TONGUE_L ** 3
-adj = 2 * SLOT_ADJ * GX               # variazione di PANEL_W a corsa piena
 
 
 def bbox(ob):
@@ -435,28 +391,35 @@ def bbox(ob):
     return (max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs)), (min(zs), max(zs))
 
 
-fb, fz = bbox(frame)
-cb, cz = bbox(clip)
-(rx, ry), (tx, ty) = arm_axis(1, 1)
+def volume(ob):
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    v = bm.calc_volume(signed=True)
+    bm.free()
+    return abs(v)
+
+
+bb, zr = bbox(mount)
+vol = volume(mount)
+arm_len = math.hypot(PANEL_HX - HEAD_IN - LUG_CX[-1], PANEL_HY - HEAD_IN - LUG_CY)
 
 print()
-print(f"pannello {PANEL_W:.0f} x {PANEL_H:.0f} x {PANEL_T} mm, dorso a z={PANEL_Z} "
-      f"sopra il coperchio (z={PANEL_Z + 32.1:.1f} dal pavimento della scatola)")
-print(f"telaio: {fb[0]:.1f} x {fb[1]:.1f} x {fb[2]:.1f} mm, sei M3 a x={LUG_CX} y=+/-{LUG_CY}")
-print(f"  piedini {FOOT_H} + piano {PLATE_T} = {FOOT_STACK:.1f} mm sotto la testa; "
-      f"con coperchio {LID_T} e inserto profondo {INSERT_DEPTH} -> vite M3x{SCREW_L:.0f} "
-      f"(impegno {SCREW_L - LID_T - FOOT_STACK:.1f} mm)")
-print(f"  bracci {ARM_W} x {ARM_Z1 - ARM_Z0} mm, sbalzo {math.hypot(tx - rx, ty - ry):.1f} mm dal lug")
-print("  telaio a H: 6 viti non allineate -> nessuna cerniera (tre viti in fila "
-      "non bloccherebbero la rotazione attorno alla loro linea)")
-print(f"clip x4 identiche: {cb[0]:.1f} x {cb[1]:.1f} x {cb[2]:.1f} mm, "
-      f"tasca {PANEL_T + PANEL_FIT:.1f} mm su pannello {PANEL_T}")
-print(f"  linguette 2 per clip: {TONGUE_L} x {TONGUE_T} mm, dente {LIP_OVER} mm")
+print(f"pannello {PANEL_W:.0f} x {PANEL_H:.0f} x {PANEL_T} mm, dorso a "
+      f"z={PANEL_BACK:.1f} sopra il coperchio "
+      f"(z={PANEL_BACK + 32.1:.1f} dal pavimento della scatola)")
+print(f"UN PEZZO: {bb[0]:.1f} x {bb[1]:.1f} x {bb[2]:.1f} mm, z da {zr[0]:.1f} a {zr[1]:.1f}")
+print(f"  volume {vol / 1000.0:.1f} cm3 -> ~{vol * RHO_PETG:.0f} g pieno "
+      f"(~{vol * RHO_PETG * 0.55:.0f} g a riempimento 30%)")
+print(f"  anello sulle sei M3 a x={LUG_CX} y=+/-{LUG_CY}; traverse a x=+/-{END_X} "
+      f"(la scatola finisce a {CASE_HX})")
+print(f"  corpo {BASE_T} mm, svaso {CBORE_D} x {CBORE_DEPTH} -> "
+      f"{BASE_T - CBORE_DEPTH:.1f} + coperchio {LID_T} sotto la testa "
+      f"-> vite M3x{SCREW_L:.0f} (impegno {SCREW_BITE:.1f} mm su inserto {INSERT_DEPTH})")
+print(f"  bracci {ARM_W} x {BASE_T} mm, sbalzo {arm_len:.1f} mm dal lug d'angolo")
+print(f"  8 linguette (2 per angolo): {TONGUE_L} x {TONGUE_T} mm alte {LIP_Z1:.1f}, "
+      f"dente {LIP_OVER} mm")
 print(f"  deformazione allo scatto {100 * strain:.2f}% (limite pratico PETG ~3%)"
       f"{'  ** ALTA **' if strain > 0.03 else ''}")
 print(f"  forza di scatto ~{force:.0f} N per linguetta, ~{2 * force:.0f} N per angolo")
-print(f"  registrazione +/-{SLOT_ADJ} mm in diagonale -> pannelli da "
-      f"{PANEL_W - adj:.0f} a {PANEL_W + adj:.0f} mm di lato")
-print(f"  vite clip: M3x10 autofilettante nel foro Ø{PILOT_D} passante del piastrino, "
-      f"testa bombata nello svaso (cielo a z={CBORE_Z}, {PANEL_Z - CBORE_Z:.1f} mm sotto il pannello)")
-print("exported:", sorted(f for f in os.listdir(OUT_DIR) if f.startswith("panel_")))
+print("  tutto estruso da z=0: nessun supporto, nessun piedino, nessuna vite in piu`")
+print("exported: panel_mount.stl")

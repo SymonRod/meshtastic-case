@@ -1,14 +1,14 @@
-"""Render di controllo della montatura: assieme e dettaglio di una clip.
+"""Render di controllo della montatura: assieme e dettaglio di un angolo.
 
     blender --background --factory-startup --python render_mount.py
 
-Produce mount_assembly.png (scatola + telaio + quattro clip, vista isometrica)
-e mount_clip.png (una clip con l'angolo del pannello inserito, in sezione di
-vista). Serve a guardare, non a misurare: le quote le controlla verify_mount.py.
+Produce mount_assembly.png (scatola + montatura, vista isometrica),
+mount_assembly_panel.png (con il pannello agganciato) e mount_corner.png
+(dettaglio di una testa d'angolo). Serve a guardare, non a misurare: le quote
+le controlla verify_mount.py.
 """
 import contextlib
 import io
-import math
 import os
 
 import bpy
@@ -20,10 +20,10 @@ g = {"__name__": "__main__", "__file__": os.path.join(HERE, "build_mount.py")}
 with contextlib.redirect_stdout(io.StringIO()):
     exec(compile(src, "build_mount.py", "exec"), g)
 
-frame, clip = g["frame"], g["clip"]
+mount = g["mount"]
 LID_TOP = 32.1                                   # faccia del coperchio, in coordinate scatola
 PANEL_W, PANEL_H, PANEL_T = g["PANEL_W"], g["PANEL_H"], g["PANEL_T"]
-PANEL_Z, ANG = g["PANEL_Z"], {(-1, -1): 0.0, (1, -1): 90.0, (1, 1): 180.0, (-1, 1): 270.0}
+BASE_T = g["BASE_T"]
 
 
 def mat(name, rgba):
@@ -35,7 +35,6 @@ def mat(name, rgba):
 
 COL = {"case": mat("case", (0.22, 0.24, 0.28, 1.0)),
        "mount": mat("mount", (0.85, 0.45, 0.12, 1.0)),
-       "clip": mat("clip", (0.95, 0.72, 0.15, 1.0)),
        "panel": mat("panel", (0.10, 0.14, 0.34, 1.0))}
 
 
@@ -59,20 +58,11 @@ for n in ("case_base.stl", "case_lid.stl"):
     if ob:
         paint(ob, "case")
 
-frame.location.z = LID_TOP
-paint(frame, "mount")
+mount.location.z = LID_TOP
+paint(mount, "mount")
 
-clips = []
-for (sx, sy), deg in ANG.items():
-    ob = clip.copy()
-    ob.data = clip.data.copy()
-    bpy.context.collection.objects.link(ob)
-    ob.matrix_world = (mathutils.Matrix.Translation((sx * PANEL_W / 2.0, sy * PANEL_H / 2.0, LID_TOP))
-                       @ mathutils.Matrix.Rotation(math.radians(deg), 4, 'Z'))
-    clips.append(paint(ob, "clip"))
-bpy.data.objects.remove(clip, do_unlink=True)
-
-bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, LID_TOP + PANEL_Z + PANEL_T / 2.0))
+bpy.ops.mesh.primitive_cube_add(size=1,
+                                location=(0, 0, LID_TOP + BASE_T + PANEL_T / 2.0))
 panel = bpy.context.active_object
 panel.name = "Panel"
 panel.scale = (PANEL_W, PANEL_H, PANEL_T)
@@ -118,7 +108,7 @@ def shoot(target, ortho, direction, fname, hide=()):
     print("render:", fname)
 
 
-shoot((0, 0, LID_TOP + 8), 250.0, (0.75, -0.95, 0.75), "mount_assembly.png", hide=(panel,))
-shoot((0, 0, LID_TOP + 10), 250.0, (0.75, -0.95, 0.75), "mount_assembly_panel.png")
-shoot((PANEL_W / 2.0 - 12, PANEL_H / 2.0 - 12, LID_TOP + PANEL_Z), 70.0,
-      (0.9, -0.7, 0.55), "mount_clip.png")
+shoot((0, 0, LID_TOP + 6), 250.0, (0.75, -0.95, 0.75), "mount_assembly.png", hide=(panel,))
+shoot((0, 0, LID_TOP + 8), 250.0, (0.75, -0.95, 0.75), "mount_assembly_panel.png")
+shoot((PANEL_W / 2.0 - 16, PANEL_H / 2.0 - 16, LID_TOP + BASE_T), 70.0,
+      (0.9, -0.7, 0.55), "mount_corner.png", hide=(panel,))
