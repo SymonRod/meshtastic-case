@@ -35,8 +35,8 @@ modificata.
   delle viti e il coperchio** usando tutte e sei le M3 esistenti, quattro
   bracci diagonali e quattro teste d'angolo con le linguette a scatto.
 
-Ingombro 183.6 × 183.6 × 11.2 mm, ~38 g in PETG a riempimento 30%. Il pannello
-appoggia 7 mm sopra il coperchio.
+Ingombro 176 × 176 × 12.2 mm, ~25 g in PETG a riempimento 30%. Il pannello
+appoggia 8 mm sopra il coperchio.
 
 Il pannello è di **misura fissa** (`PANEL_W`, `PANEL_H`). È la scelta che ha
 permesso il pezzo unico: la versione precedente aveva telaio + 4 clip
@@ -53,7 +53,7 @@ cerchi di ottenerla deformando questo pezzo.
 - `verify_case.py` — rigenera e sonda ~150 punti campione (vedi *Verifica*).
 - `build_mount.py` — montatura del pannello, stessa filosofia: quote in cima,
   `panel_mount.stl` rigenerato a ogni run.
-- `verify_mount.py` — topologia (un solo guscio, chiuso) + ~560 punti campione
+- `verify_mount.py` — topologia (un solo guscio, chiuso) + ~660 punti campione
   sulla montatura.
 - `render_mount.py` — render di controllo dell'assieme.
 - `render_corner_section.py` — sezione della testa d'angolo: come si aggancia.
@@ -244,12 +244,26 @@ zero ed esporta i due STL in questa cartella. Ignora l'errore
   **instampabile**, perché un piano di 170 mm sospeso su sei colonnine Ø9.2
   vuole i supporti sotto tutto, e capovolgendo il pezzo finiscono in aria i
   bracci. Qui il corpo parte da z = 0 e appoggia sul piatto per intero.
-- Il corpo è **spesso `BASE_T` = 7 e la sua faccia superiore è il piano
-  d'appoggio del pannello**: le teste delle viti stanno annegate in uno svaso
-  Ø6.4 profondo 3.5 e restano 1.3 mm sotto il pannello. Sotto la testa ci sono
-  3.5 di corpo + 3.2 di coperchio, quindi la vite è **M3×12** (impegno 5.3 mm).
-  Se cambi `BASE_T` o `CBORE_DEPTH` rifai il conto: l'impegno deve restare fra
-  ~4.5 e `INSERT_DEPTH`, oltre la vite tocca il fondo del foro e non tira più.
+- **La lastra è sottile (`PLATE_T` = 3.5) e sale a `RISE_H` = 8 solo dove
+  serve**: i sei bossi delle viti, i quattro bracci e le teste d'angolo. Il
+  piano d'appoggio del pannello è la faccia a 8; l'anello passa 4.5 mm più in
+  basso e non tocca niente.
+- I bracci **non si possono assottigliare**. Sono mensole da 49 mm caricate dal
+  vento: a 8 mm di altezza stanno a ~8 MPa con 0.9 mm di freccia, a 3 mm
+  andrebbero a ~44 MPa (il PETG cede intorno a 50) con 13 mm di freccia. In Z
+  la sezione conta al quadrato, quindi è l'altezza a contare, non la larghezza:
+  il report stampa entrambi i numeri a ogni run, guardali prima di toccare
+  `RISE_H` o `ARM_W`.
+- I **bossi** delle viti servono a due cose insieme: ospitare lo svaso (sotto
+  la testa restano esattamente `PLATE_T`, perché `CBORE_DEPTH` è derivata come
+  `RISE_H - PLATE_T`) e portare la sezione alta fin sopra la vite, così il
+  momento dei bracci finisce nella vite invece che nella lastra sottile. **Non
+  togliere i bossi lasciando i bracci a innestarsi sulla lastra.**
+- Sotto la testa ci sono 3.5 di lastra + 3.2 di coperchio, quindi la vite è
+  **M3×12** (impegno 5.3 mm). Se cambi `PLATE_T` o `RISE_H` rifai il conto:
+  l'impegno deve restare fra ~4.5 e `INSERT_DEPTH`, oltre la vite tocca il
+  fondo del foro e non tira più. `HEAD_GAP` (aria fra testa vite e pannello,
+  2.3 mm) è stampata nel report e un test la controlla.
 - `check_case_interface()` rilegge `build_case.py` a ogni run e si ferma se
   `LUG_CX/LUG_CY/LUG_R/SCREW_D/INSERT_DEPTH/LID_T` sono cambiati. Le costanti
   sono duplicate apposta invece di importare `build_case`: importarlo lo
@@ -264,6 +278,10 @@ zero ed esporta i due STL in questa cartella. Ignora l'errore
   (`mapper(sx, sy)`: origine sull'angolo del pannello, u e v verso l'interno),
   e ogni testa è simmetrica rispetto alla propria bisettrice. Lavorare in quel
   frame è ciò che tiene il file corto: si scrive una testa, non quattro.
+- **Niente alette di sgancio in punta alle linguette.** C'erano e sporgevano
+  oltre lo spigolo del pannello: erano l'unica cosa che usciva dal profilo.
+  Non servono: la linguetta sta tutta fuori dal bordo del pannello, quindi la
+  si preme direttamente sul fianco per sganciare.
 - Il pannello si aggancia premendolo giù: due linguette per angolo, otto in
   tutto, ognuna 24 × 2.4 mm con un dente da 1.5. Deformazione allo scatto
   0.94% (il PETG regge ~3% a breve termine), forza ~8 N per linguetta, ~15 N
@@ -287,6 +305,19 @@ zero ed esporta i due STL in questa cartella. Ignora l'errore
   sottosquadri, si stampa senza un solo supporto e con adesione piena. L'unica
   sporgenza è il dente (1.5 mm) e la sua rampa a 45°. **Non introdurre feature
   non prismatiche** senza guardare cosa succede in stampa.
+- Due degenerazioni del solver EXACT sono già state pagate una volta, **non
+  reintrodurle**:
+  - la rampa a 45° del dente passava *esattamente* per due spigoli del dente,
+    e il taglio tangente lasciava la faccia inclinata sdoppiata. `RAMP_LEAD`
+    (0.3 mm) sposta la retta quel tanto che basta; in cima al dente resta
+    0.3 mm di sporgenza invece di zero, che non cambia nulla di funzionale.
+  - i tre cilindri concentrici della vite (bosso, svaso, foro) avevano lo
+    stesso numero di lati, quindi i vertici cadevano sulle stesse generatrici
+    radiali: restava un triangolo sciolto sul bordo del foro. Ora sono
+    **64 / 56 / 48**. Non uniformarli.
+  Provato e scartato: costruire tutto a partire da −0.6 e tagliare a filo z=0
+  per evitare le facce complanari sul piano di stampa. Peggiora e basta — il
+  taglio finale rompe la mesh in tre gusci.
 - `verify_mount.py` controlla per primo che il pezzo sia **un solo guscio
   chiuso**. Non è pignoleria: le otto linguette e il piano si sfiorano a 1.2 mm,
   e basta un segno sbagliato perché una resti staccata — lo slicer stamperebbe

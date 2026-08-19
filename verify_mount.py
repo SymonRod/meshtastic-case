@@ -26,14 +26,15 @@ G = {"__name__": "__main__", "__file__": os.path.join(HERE, "build_mount.py")}
 exec(compile(src, "build_mount.py", "exec"), G)
 
 mount = G["mount"]
-BASE_T = G["BASE_T"]
+PLATE_T, RISE_H = G["PLATE_T"], G["RISE_H"]
+BOSS_R, SCREW_HEAD_H = G["BOSS_R"], G["SCREW_HEAD_H"]
 PANEL_HX, PANEL_HY = G["PANEL_HX"], G["PANEL_HY"]
 PANEL_T, PANEL_CLR, PANEL_FIT = G["PANEL_T"], G["PANEL_CLR"], G["PANEL_FIT"]
 PANEL_BACK, LIP_Z0, LIP_Z1 = G["PANEL_BACK"], G["LIP_Z0"], G["LIP_Z1"]
 LIP_OVER, LIP_START = G["LIP_OVER"], G["LIP_START"]
 CORNER_L, CORNER_W, GAP = G["CORNER_L"], G["CORNER_W"], G["GAP"]
 TONGUE_T, TONGUE_L = G["TONGUE_T"], G["TONGUE_L"]
-PAD_IN, PAD_S = G["PAD_IN"], G["PAD_S"]
+PAD_IN, PAD_S, PAD_W = G["PAD_IN"], G["PAD_S"], G["PAD_W"]
 SCREW_D, CBORE_D, CBORE_DEPTH = G["SCREW_D"], G["CBORE_D"], G["CBORE_DEPTH"]
 LUG_XY, LUG_CY, LUG_R = G["LUG_XY"], G["LUG_CY"], G["LUG_R"]
 CORNERS, CASE_HX = G["CORNERS"], G["CASE_HX"]
@@ -121,12 +122,12 @@ if open_edges:
 
 for lx, ly in LUG_XY:
     # foro vite passante
-    for z in (0.5, BASE_T - CBORE_DEPTH - 0.5):
+    for z in (0.5, PLATE_T - 0.5):
         empty((lx, ly, z), "foro M3")
     # svaso sopra
-    empty((lx + CBORE_D / 2.0 - 0.6, ly, BASE_T - 0.5), "svaso M3")
+    empty((lx + CBORE_D / 2.0 - 0.6, ly, RISE_H - 0.5), "svaso M3")
     # sotto lo svaso c'e` ancora materiale (e` quello che la vite tira)
-    solid((lx + CBORE_D / 2.0 - 0.6, ly, BASE_T - CBORE_DEPTH - 0.5), "cielo dello svaso")
+    solid((lx + CBORE_D / 2.0 - 0.6, ly, PLATE_T - 0.5), "cielo dello svaso")
     # materiale attorno al foro
     for dx, dy in ((SCREW_D / 2.0 + 1.0, 0.0), (0.0, SCREW_D / 2.0 + 1.0)):
         solid((lx + dx, ly + dy, 1.0), "trave attorno alla vite")
@@ -141,10 +142,10 @@ for x in range(-60, 61, 5):
 # traverse d'estremita`: chiudono l'anello e stanno FUORI dalla scatola
 for sx in (-1, 1):
     for y in (-20.0, 0.0, 20.0):
-        solid((sx * END_X, y, BASE_T / 2.0), "traversa d'estremita`")
-    empty((sx * (CASE_HX - 1.0), 0.0, BASE_T / 2.0), "sopra il coperchio, in mezzeria")
+        solid((sx * END_X, y, PLATE_T / 2.0), "traversa d'estremita`")
+    empty((sx * (CASE_HX - 1.0), 0.0, PLATE_T / 2.0), "sopra il coperchio, in mezzeria")
     # il bordo interno della traversa non sconfina sulla scatola
-    empty((sx * (END_X - END_W / 2.0 - 0.4), 0.0, BASE_T / 2.0), "aria fra traversa e scatola")
+    empty((sx * (END_X - END_W / 2.0 - 0.4), 0.0, PLATE_T / 2.0), "aria fra traversa e scatola")
 
 # il pezzo non appoggia sulla campata centrale del coperchio: a z=0, dentro
 # l'impronta della scatola, c'e` materiale solo nella fascia delle travi
@@ -153,18 +154,37 @@ for x in (-40.0, -20.0, 0.0, 20.0, 40.0):
         empty((x, y, 0.2), "campata centrale del coperchio libera")
         empty((x, -y, 0.2), "campata centrale del coperchio libera")
 
-# bracci diagonali continui dal lug d'angolo alla testa
+# la lastra e` SOTTILE: fra un bosso e l'altro, sopra PLATE_T non c'e` niente.
+# (i bracci partono dai lug d'angolo e se ne vanno in diagonale, quindi lungo
+# la trave restano solo i bossi a salire)
+for x in range(-45, 46, 5):
+    if abs(x) < BOSS_R + 1.5:                   # bosso della vite centrale
+        continue
+    for sy in (-1, 1):
+        empty((x, sy * LUG_CY, PLATE_T + 0.5), "lastra sottile fra i bossi")
+
+# i bossi invece salgono fino a RISE_H, e la testa della vite ci sta dentro
+for lx, ly in LUG_XY:
+    solid((lx + BOSS_R - 1.0, ly, RISE_H - 0.5), "bosso della vite")
+    empty((lx + CBORE_D / 2.0 - 0.6, ly, PLATE_T + SCREW_HEAD_H + 0.2),
+          "spazio per la testa della vite")
+if G["HEAD_GAP"] < 0.5:
+    FAILS.append(f"la testa della vite arriva a {G['HEAD_GAP']:.1f} mm dal pannello")
+
+# bracci diagonali continui dal lug d'angolo alla testa, e alti quanto RISE_H
 for sx, sy in CORNERS:
     ax, ay = sx * 52.0, sy * LUG_CY
     ex, ey = sx * (PANEL_HX - G["HEAD_IN"]), sy * (PANEL_HY - G["HEAD_IN"])
     for t in [i / 10.0 for i in range(1, 11)]:   # t=0 e` il foro del lug
-        solid((ax + (ex - ax) * t, ay + (ey - ay) * t, 1.5), "braccio")
+        px, py = ax + (ex - ax) * t, ay + (ey - ay) * t
+        solid((px, py, 1.5), "braccio")
+        solid((px, py, RISE_H - 0.5), "braccio alto fino al pannello")
 
 # ------------------------------------------------------- alloggiamento pannello
-# Lo spazio che occupa il pannello (z da BASE_T a PANEL_BACK, dentro il
+# Lo spazio che occupa il pannello (z da RISE_H a PANEL_BACK, dentro il
 # perimetro rientrato di PANEL_CLR) deve essere COMPLETAMENTE libero: se
 # qualcosa ci sporge dentro, il pannello non ci appoggia in piano.
-zmid = BASE_T + PANEL_T / 2.0
+zmid = RISE_H + PANEL_T / 2.0
 for i in range(41):
     t = -1.0 + 2.0 * i / 40.0
     for edge in range(4):
@@ -187,9 +207,9 @@ for x in (-60.0, 0.0, 60.0):
 for sx, sy in CORNERS:
     L = mapper(sx, sy)
     for u, v in ((PAD_IN + 1.0, PAD_IN + 1.0), (PAD_S - 2.0, PAD_IN + 1.0),
-                 (PAD_IN + 1.0, PAD_S - 2.0), (8.0, 8.0)):
+                 (PAD_IN + 1.0, PAD_S - 2.0), (PAD_W - 2.0, PAD_W - 2.0)):
         x, y = L(u, v)
-        solid((x, y, BASE_T - 0.5), "piano d'appoggio d'angolo")
+        solid((x, y, RISE_H - 0.5), "piano d'appoggio d'angolo")
 
 # ------------------------------------------------------------------ montanti
 for sx, sy in CORNERS:
@@ -214,13 +234,13 @@ for sx, sy in CORNERS:
         vmid = -PANEL_CLR - TONGUE_T / 2.0
         # corpo della linguetta, da terra fino in cima
         for u in (CORNER_L + 2.0, CORNER_L + TONGUE_L / 2.0, CORNER_L + TONGUE_L - 1.0):
-            for z in (0.5, BASE_T, LIP_Z1 - 0.3):
+            for z in (0.5, RISE_H, LIP_Z1 - 0.3):
                 x, y = P(u, vmid)
                 solid((x, y, z), "linguetta")
         # ARIA fra linguetta e piano d'appoggio: se sparisce, l'unione le
         # salda e la linguetta non flette piu`
         for u in (CORNER_L + 2.0, CORNER_L + TONGUE_L / 2.0, CORNER_L + TONGUE_L - 1.0):
-            for z in (0.5, BASE_T - 0.5):
+            for z in (0.5, RISE_H - 0.5):
                 x, y = P(u, (PAD_IN - PANEL_CLR) / 2.0)   # meta` del gap
                 empty((x, y, z), "aria fra linguetta e piano")
         # dente: scavalca il bordo del pannello. Si sonda appena sopra LIP_Z0,
@@ -237,6 +257,10 @@ for sx, sy in CORNERS:
         # rampa a 45 gradi: in alto, verso l'interno, il dente e` tagliato
         x, y = P(CORNER_L + TONGUE_L - 2.0, LIP_OVER - 0.2)
         empty((x, y, LIP_Z1 - 0.2), "invito a 45 gradi sul dente")
+        # niente aletta di sgancio: fuori dalla linguetta non sporge nulla
+        for u in (CORNER_L + TONGUE_L - 2.0, CORNER_L + TONGUE_L / 2.0):
+            x, y = P(u, -PANEL_CLR - TONGUE_T - 1.5)
+            empty((x, y, LIP_Z1 - 1.0), "niente aletta oltre la linguetta")
 
 # ------------------------------------------------------------------- niente
 # materiale sotto il piano di stampa

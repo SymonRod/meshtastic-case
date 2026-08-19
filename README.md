@@ -44,17 +44,20 @@ prende il pannello per i quattro angoli con otto linguette a scatto.
 ![La montatura montata sulla custodia](mount_assembly.png)
 
 - **Un solo pezzo, nessuna vite in più**: le sei M3 del coperchio diventano
-  M3×12 e basta (le teste stanno annegate nello svaso, il pannello ci appoggia
-  sopra)
+  M3×12 e basta (le teste stanno annegate nello svaso, 2.3 mm sotto il
+  pannello)
+- **Lastra da 3.5 mm**, che sale a 8 solo dove serve: i sei bossi delle viti,
+  i quattro bracci e le teste d'angolo
 - **Anello chiuso su tutte e sei le viti**: tre viti in fila, da sole, non
   bloccherebbero la rotazione attorno alla loro linea
 - Del coperchio tocca **solo i lug e la striscia sopra le pareti**, mai la
   campata centrale: il coperchio non viene inarcato e la tenuta non si apre
-- **Otto linguette a scatto** (due per angolo), con aletta per aprirle a mano
+- **Otto linguette a scatto** (due per angolo), premibili dal fianco per sganciare
 - Tutto estruso in verticale dal piano di stampa: **nessun supporto**, nessun
   piedino, appoggio pieno sul piatto
 - Il pannello è di misura **fissa**: si cambia `PANEL_W`/`PANEL_H` e si
   ristampa
+- ~25 g in PETG, ingombro 176 × 176 × 12.2 mm
 
 | Dettaglio di una testa d'angolo |
 |---|
@@ -74,7 +77,7 @@ appoggia sul piano il dente scatta sopra la faccia anteriore.
   punti campione (cava O-ring, spalle, cavità, fori)
 - `build_mount.py` — montatura del pannello solare
 - `panel_mount.stl` ×1 — output della montatura
-- `verify_mount.py` — verifica della montatura (topologia + ~560 punti)
+- `verify_mount.py` — verifica della montatura (topologia + ~660 punti)
 - `render_mount.py`, `render_corner_section.py` — render di controllo
 
 ## Rigenerare gli STL
@@ -97,7 +100,7 @@ nella cartella corrente.
 - Chiusura: 6 inserti filettati M3 a caldo + viti M3×10 a testa bombata
 - Fissaggio: 4 viti/bulloni M4 nelle alette
 - Montatura: un pezzo solo, appoggiato sul piatto così com'è; niente supporti,
-  ~38 g in PETG. Con la montatura le sei viti diventano **M3×12** (impegno 5.3
+  ~25 g in PETG. Con la montatura le sei viti diventano **M3×12** (impegno 5.3
   mm nell'inserto) e non serve nient'altro
 
 ## Licenza

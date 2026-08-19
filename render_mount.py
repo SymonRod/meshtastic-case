@@ -23,7 +23,7 @@ with contextlib.redirect_stdout(io.StringIO()):
 mount = g["mount"]
 LID_TOP = 32.1                                   # faccia del coperchio, in coordinate scatola
 PANEL_W, PANEL_H, PANEL_T = g["PANEL_W"], g["PANEL_H"], g["PANEL_T"]
-BASE_T = g["BASE_T"]
+RISE_H = g["RISE_H"]
 
 
 def mat(name, rgba):
@@ -62,7 +62,7 @@ mount.location.z = LID_TOP
 paint(mount, "mount")
 
 bpy.ops.mesh.primitive_cube_add(size=1,
-                                location=(0, 0, LID_TOP + BASE_T + PANEL_T / 2.0))
+                                location=(0, 0, LID_TOP + RISE_H + PANEL_T / 2.0))
 panel = bpy.context.active_object
 panel.name = "Panel"
 panel.scale = (PANEL_W, PANEL_H, PANEL_T)
@@ -110,5 +110,5 @@ def shoot(target, ortho, direction, fname, hide=()):
 
 shoot((0, 0, LID_TOP + 6), 250.0, (0.75, -0.95, 0.75), "mount_assembly.png", hide=(panel,))
 shoot((0, 0, LID_TOP + 8), 250.0, (0.75, -0.95, 0.75), "mount_assembly_panel.png")
-shoot((PANEL_W / 2.0 - 16, PANEL_H / 2.0 - 16, LID_TOP + BASE_T), 70.0,
+shoot((PANEL_W / 2.0 - 16, PANEL_H / 2.0 - 16, LID_TOP + RISE_H), 70.0,
       (0.9, -0.7, 0.55), "mount_corner.png", hide=(panel,))

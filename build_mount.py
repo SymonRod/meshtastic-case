@@ -48,20 +48,24 @@ PANEL_FIT = 0.3                       # aria in Z fra dorso e dente
 PANEL_CLR = 0.4                       # aria in pianta fra bordo e montanti
 
 # ------------------------------------------------------------------- corpo
-BASE_T = 7.0                          # spessore del corpo = quota d'appoggio
-                                      # del pannello sopra il coperchio
-SPINE_W = 2 * LUG_R                   # larghezza (Y) delle travi sulle viti
+# Due sole quote in Z: la lastra e` sottile, e sale a RISE_H solo dove serve
+# (bossi delle viti, bracci, teste d'angolo).
+PLATE_T = 3.5                         # spessore della lastra dell'anello
+RISE_H = 8.0                          # quota della faccia d'appoggio del
+                                      # pannello sopra il coperchio
+BOSS_R = LUG_R                        # raggio dei bossi attorno alle viti
+SPINE_W = 6.0                         # larghezza (Y) delle travi
 END_X = 62.0                          # asse delle traverse d'estremita`
-END_W = 6.0                           # larghezza (X) delle traverse
-ARM_W = 9.0                           # larghezza dei bracci diagonali
+END_W = 5.0                           # larghezza (X) delle traverse
+ARM_W = 7.0                           # larghezza dei bracci diagonali
 CBORE_D = 6.4                         # svaso per la testa bombata M3
-CBORE_DEPTH = 3.5                     # profondita` dello svaso dal dorso
+SCREW_HEAD_H = 2.2                    # altezza della testa bombata M3
 
 # ------------------------------------------------------------ testa d'angolo
 CORNER_W = 3.0                        # spessore dei montanti d'angolo
-CORNER_L = 14.0                       # lunghezza dei montanti lungo il bordo
-PAD_S = 26.0                          # estensione del piano d'appoggio
-PAD_CHAMF = 38.0                      # taglio dell'angolo lontano (u + v <=)
+CORNER_L = 12.0                       # lunghezza dei montanti lungo il bordo
+PAD_W = 7.0                           # larghezza dei rami del piano d'appoggio
+PAD_S = 21.0                          # lunghezza dei rami
 GAP = 1.2                             # aria fra linguetta e resto del pezzo
 TONGUE_T = 2.4                        # spessore della linguetta elastica
 TONGUE_L = 24.0                       # sbalzo libero della linguetta
@@ -69,21 +73,25 @@ TONGUE_ROOT = 4.0                     # quanto la radice entra nella testa
 LIP_OVER = 1.5                        # quanto il dente scavalca il pannello
 LIP_H = 1.5                           # altezza del dente
 LIP_START = 10.0                      # da dove parte il dente lungo lo sbalzo
-TAB_L, TAB_W = 4.0, 4.0               # aletta per aprire la linguetta a mano
+RAMP_LEAD = 0.3                       # quanto dente resta pieno sotto la rampa
 
 # ------------------------------------------------------------------- derivate
 LUG_XY = [(lx, sy * LUG_CY) for lx in LUG_CX for sy in (-1, 1)]
 CORNERS = [(sx, sy) for sx in (-1, 1) for sy in (-1, 1)]
 
 PANEL_HX, PANEL_HY = PANEL_W / 2.0, PANEL_H / 2.0
-PANEL_BACK = BASE_T + PANEL_T                       # dorso del pannello
+PANEL_BACK = RISE_H + PANEL_T                       # dorso del pannello
 LIP_Z0 = PANEL_BACK + PANEL_FIT                     # sotto del dente
 LIP_Z1 = LIP_Z0 + LIP_H                             # cima del pezzo
 PAD_IN = GAP - PANEL_CLR                            # quanto il piano entra
                                                     # sotto il bordo pannello
-SCREW_STACK = (BASE_T - CBORE_DEPTH) + LID_T        # materiale sotto la testa
+# Lo svaso scende dalla cima del bosso fino alla lastra: sotto la testa resta
+# esattamente PLATE_T, comunque si muovano RISE_H e PLATE_T.
+CBORE_DEPTH = RISE_H - PLATE_T
+SCREW_STACK = PLATE_T + LID_T                       # materiale sotto la testa
 SCREW_L = 12.0                                      # M3x12
 SCREW_BITE = SCREW_L - SCREW_STACK                  # impegno nell'inserto
+HEAD_GAP = RISE_H - (PLATE_T + SCREW_HEAD_H)        # aria testa vite/pannello
 
 HEAD_IN = 10.0                        # dove il braccio incontra l'angolo
 
@@ -251,22 +259,21 @@ def corner_parts(sx, sy):
     # bordo del pannello e` riservata alle linguette.
     parts.append(prism(f"blk_{sx:+d}{sy:+d}",
                        [L(-cw, -cw), L(cl, -cw), L(cl, cl), L(-cw, cl)],
-                       0.0, BASE_T))
-
-    # piano d'appoggio del pannello, con l'angolo lontano smussato. Si ferma a
-    # PAD_IN dal bordo: fra lui e la linguetta restano GAP mm d'aria. Se si
-    # toccassero, l'unione li salderebbe e la linguetta non flette piu`.
-    parts.append(prism(f"pad_{sx:+d}{sy:+d}",
-                       [L(PAD_IN, PAD_IN), L(PAD_S, PAD_IN),
-                        L(PAD_S, PAD_CHAMF - PAD_S), L(PAD_CHAMF - PAD_S, PAD_S),
-                        L(PAD_IN, PAD_S)],
-                       0.0, BASE_T))
+                       0.0, RISE_H))
 
     for swap in (False, True):
         def P(u, v, _s=swap):
             return L(v, u) if _s else L(u, v)
         tag = f"{'v' if swap else 'u'}_{sx:+d}{sy:+d}"
 
+        # piano d'appoggio: un ramo per bordo, non un piastrone pieno. Si ferma
+        # a PAD_IN dal bordo del pannello: fra lui e la linguetta restano GAP
+        # mm d'aria. Se si toccassero, l'unione li salderebbe e la linguetta
+        # non flette piu`.
+        parts.append(prism(f"pad_{tag}",
+                           [P(PAD_IN, PAD_IN), P(PAD_S, PAD_IN),
+                            P(PAD_S, PAD_W), P(PAD_IN, PAD_W)],
+                           0.0, RISE_H))
         # montante: fermo laterale rigido in pianta, separato dalle linguette.
         parts.append(prism(f"post_{tag}",
                            [P(-cw, -cw), P(cl, -cw), P(cl, t_in), P(-cw, t_in)],
@@ -281,11 +288,10 @@ def corner_parts(sx, sy):
                            [P(cl + LIP_START, t_in), P(u1, t_in),
                             P(u1, LIP_OVER), P(cl + LIP_START, LIP_OVER)],
                            LIP_Z0, LIP_Z1))
-        # aletta per aprire la linguetta con l'unghia
-        parts.append(prism(f"tab_{tag}",
-                           [P(u1 - TAB_L, t_out - TAB_W), P(u1, t_out - TAB_W),
-                            P(u1, t_out), P(u1 - TAB_L, t_out)],
-                           0.0, LIP_Z1))
+        # Niente aletta di sgancio: sporgeva oltre lo spigolo del pannello ed
+        # era l'unica cosa che usciva dal profilo. Non serve: la linguetta sta
+        # tutta fuori dal bordo del pannello, quindi la si preme direttamente
+        # sul fianco per sganciare.
     return parts
 
 
@@ -294,8 +300,14 @@ def corner_ramps(sx, sy):
     preme il pannello. Prisma triangolare lungo il bordo."""
     L = mapper(sx, sy)
     tools = []
-    tri = [(LIP_OVER + 0.2, LIP_Z0 - 0.2), (LIP_OVER + 0.2, LIP_Z1 + 0.2),
-           (LIP_OVER - (LIP_Z1 - LIP_Z0) - 0.2, LIP_Z1 + 0.2)]
+    # La rampa e` la retta v + z = k a 45 gradi. RAMP_LEAD la sposta di quel
+    # tanto che basta perche` NON passi per gli spigoli del dente: passandoci
+    # esattamente (com'era) il taglio e` tangente a due spigoli e il solver
+    # EXACT lascia la faccia inclinata sdoppiata. In cima al dente restano
+    # RAMP_LEAD mm di sporgenza invece di zero.
+    k = LIP_OVER + LIP_Z0 + RAMP_LEAD
+    zlo, zhi = LIP_Z0 - 1.0, LIP_Z1 + 1.0
+    tri = [(k - zlo, zlo), (k - zlo, zhi), (k - zhi, zhi)]
     a0 = CORNER_L + LIP_START - 0.5
     a1 = CORNER_L + TONGUE_L + 0.5
     for swap in (False, True):
@@ -323,11 +335,18 @@ def build_mount():
     # non bloccherebbero la rotazione attorno alla loro linea).
     ring_hx = END_X + END_W / 2.0
     for sy in (-1, 1):
-        parts.append(box("spine", (2 * ring_hx, SPINE_W, BASE_T),
-                         (0.0, sy * LUG_CY, BASE_T / 2.0)))
+        parts.append(box("spine", (2 * ring_hx, SPINE_W, PLATE_T),
+                         (0.0, sy * LUG_CY, PLATE_T / 2.0)))
     for sx in (-1, 1):
-        parts.append(box("end", (END_W, 2 * LUG_CY + SPINE_W, BASE_T),
-                         (sx * END_X, 0.0, BASE_T / 2.0)))
+        parts.append(box("end", (END_W, 2 * LUG_CY + SPINE_W, PLATE_T),
+                         (sx * END_X, 0.0, PLATE_T / 2.0)))
+
+    # bossi sulle sei viti: sono l'unico punto in cui la lastra sale a RISE_H.
+    # Servono a due cose insieme: ospitare lo svaso (sotto la testa restano
+    # PLATE_T di materiale) e portare la sezione alta fin sopra la vite, cosi`
+    # il momento dei bracci finisce nella vite e non nella lastra sottile.
+    for i, (lx, ly) in enumerate(LUG_XY):
+        parts.append(cyl(f"boss{i}", BOSS_R, RISE_H, (lx, ly, RISE_H / 2.0)))
 
     # bracci diagonali: dal lug d'angolo alla testa d'angolo.
     for sx, sy in CORNERS:
@@ -340,7 +359,7 @@ def build_mount():
         parts.append(prism(f"arm_{sx:+d}{sy:+d}",
                            rect((cx + ex) / 2.0, (cy + ey) / 2.0, ux, uy,
                                 dl + 3.0, ARM_W),
-                           0.0, BASE_T))
+                           0.0, RISE_H))
         parts += corner_parts(sx, sy)
 
     mount = parts[0]
@@ -348,11 +367,16 @@ def build_mount():
 
     # forature: sei passanti M3 con svaso per la testa bombata. La testa resta
     # annegata, cosi` il pannello appoggia sulla faccia del corpo.
+    # I tre cilindri concentrici (bosso 64, svaso 56, foro 48) hanno numero di
+    # lati DIVERSO apposta: con lo stesso numero i vertici cadono sulle stesse
+    # generatrici radiali e il solver EXACT lascia un triangolo sciolto sul
+    # bordo del foro. Non uniformarli.
     tools = []
     for i, (lx, ly) in enumerate(LUG_XY):
-        tools.append(cyl(f"sh{i}", SCREW_D / 2.0, BASE_T + 4.0, (lx, ly, BASE_T / 2.0)))
+        tools.append(cyl(f"sh{i}", SCREW_D / 2.0, RISE_H + 4.0,
+                         (lx, ly, RISE_H / 2.0), verts=48))
         tools.append(cyl(f"cb{i}", CBORE_D / 2.0, CBORE_DEPTH + 2.0,
-                         (lx, ly, BASE_T - CBORE_DEPTH + (CBORE_DEPTH + 2.0) / 2.0)))
+                         (lx, ly, PLATE_T + (CBORE_DEPTH + 2.0) / 2.0), verts=56))
     for sx, sy in CORNERS:
         tools += corner_ramps(sx, sy)
     cut(mount, tools)
@@ -412,10 +436,21 @@ print(f"  volume {vol / 1000.0:.1f} cm3 -> ~{vol * RHO_PETG:.0f} g pieno "
       f"(~{vol * RHO_PETG * 0.55:.0f} g a riempimento 30%)")
 print(f"  anello sulle sei M3 a x={LUG_CX} y=+/-{LUG_CY}; traverse a x=+/-{END_X} "
       f"(la scatola finisce a {CASE_HX})")
-print(f"  corpo {BASE_T} mm, svaso {CBORE_D} x {CBORE_DEPTH} -> "
-      f"{BASE_T - CBORE_DEPTH:.1f} + coperchio {LID_T} sotto la testa "
-      f"-> vite M3x{SCREW_L:.0f} (impegno {SCREW_BITE:.1f} mm su inserto {INSERT_DEPTH})")
-print(f"  bracci {ARM_W} x {BASE_T} mm, sbalzo {arm_len:.1f} mm dal lug d'angolo")
+print(f"  lastra {PLATE_T} mm, sale a {RISE_H} solo sui bossi delle viti, sui "
+      f"bracci e sulle teste d'angolo")
+print(f"  svaso {CBORE_D} x {CBORE_DEPTH} -> {PLATE_T} + coperchio {LID_T} sotto "
+      f"la testa -> vite M3x{SCREW_L:.0f} (impegno {SCREW_BITE:.1f} mm su "
+      f"inserto {INSERT_DEPTH})")
+print(f"  testa vite annegata: {HEAD_GAP:.1f} mm d'aria fino al pannello"
+      f"{'  ** TOCCA **' if HEAD_GAP < 0.5 else ''}")
+print(f"  bracci {ARM_W} x {RISE_H} mm, sbalzo {arm_len:.1f} mm dal lug d'angolo")
+# vento: ~12 N per angolo su un pannello 170 x 170 a 100 km/h, normale al piano
+arm_w = ARM_W * RISE_H ** 2 / 6.0                      # modulo di resistenza
+arm_i = ARM_W * RISE_H ** 3 / 12.0
+arm_sigma = 12.0 * arm_len / arm_w
+arm_defl = 12.0 * arm_len ** 3 / (3.0 * E_PETG * arm_i)
+print(f"    vento ~12 N per angolo -> {arm_sigma:.0f} MPa e {arm_defl:.1f} mm di "
+      f"freccia (PETG cede ~50 MPa){'  ** ALTO **' if arm_sigma > 20 else ''}")
 print(f"  8 linguette (2 per angolo): {TONGUE_L} x {TONGUE_T} mm alte {LIP_Z1:.1f}, "
       f"dente {LIP_OVER} mm")
 print(f"  deformazione allo scatto {100 * strain:.2f}% (limite pratico PETG ~3%)"

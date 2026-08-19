@@ -20,7 +20,7 @@ with contextlib.redirect_stdout(io.StringIO()):
     exec(compile(src, "build_mount.py", "exec"), g)
 
 mount = g["mount"]
-PT, BASE_T = g["PANEL_T"], g["BASE_T"]
+PT, RISE_H = g["PANEL_T"], g["RISE_H"]
 HX, HY = g["PANEL_HX"], g["PANEL_HY"]
 
 # Si seziona l'angolo (+1, +1): li` u cresce verso -X e v verso -Y, quindi la
@@ -66,7 +66,7 @@ for i, (dy, dz) in enumerate(((-SEP, RAISE), (0.0, 0.0))):
     c.color = COL_MOUNT
     # sezione di pannello: dal bordo (y = HY) verso l'interno
     p = cube(f"panel{i}", (SLICE, 26.0, PT),
-             (x0 + SLICE / 2.0, HY - 13.0 + dy, BASE_T + dz + PT / 2.0))
+             (x0 + SLICE / 2.0, HY - 13.0 + dy, RISE_H + dz + PT / 2.0))
     p.color = COL_PANEL
 bpy.data.objects.remove(mount, do_unlink=True)
 
