@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "blender": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/home/rod/blender_mcp/mcp",
+        "run",
+        "blender-mcp"
+      ],
+      "env": {}
+    }
+  }
+}
