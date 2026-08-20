@@ -62,14 +62,14 @@ CBORE_D = 6.4                         # svaso per la testa bombata M3
 SCREW_HEAD_H = 2.2                    # altezza della testa bombata M3
 
 # ------------------------------------------------------------ testa d'angolo
-CORNER_W = 3.0                        # spessore dei montanti d'angolo
-CORNER_L = 12.0                       # lunghezza dei montanti lungo il bordo
+# Ogni testa e` fatta di tre soli pezzi per bordo: una LAMELLA continua
+# (montante rigido + linguetta, un prisma unico), il PIANO d'appoggio del
+# pannello che la fascia dall'interno, e il DENTE. Niente blocco d'angolo.
+RAIL_T = 2.4                          # spessore della lamella
+RAIL_L = 12.0                         # tratto di lamella fasciato dal piano:
+                                      # e` li` che la linguetta ha la radice
 PAD_W = 7.0                           # larghezza dei rami del piano d'appoggio
-PAD_S = 21.0                          # lunghezza dei rami
-GAP = 1.2                             # aria fra linguetta e resto del pezzo
-TONGUE_T = 2.4                        # spessore della linguetta elastica
 TONGUE_L = 24.0                       # sbalzo libero della linguetta
-TONGUE_ROOT = 4.0                     # quanto la radice entra nella testa
 LIP_OVER = 1.5                        # quanto il dente scavalca il pannello
 LIP_H = 1.5                           # altezza del dente
 LIP_START = 10.0                      # da dove parte il dente lungo lo sbalzo
@@ -83,8 +83,9 @@ PANEL_HX, PANEL_HY = PANEL_W / 2.0, PANEL_H / 2.0
 PANEL_BACK = RISE_H + PANEL_T                       # dorso del pannello
 LIP_Z0 = PANEL_BACK + PANEL_FIT                     # sotto del dente
 LIP_Z1 = LIP_Z0 + LIP_H                             # cima del pezzo
-PAD_IN = GAP - PANEL_CLR                            # quanto il piano entra
-                                                    # sotto il bordo pannello
+RAIL_IN = -PANEL_CLR                                # faccia interna lamella
+RAIL_OUT = -PANEL_CLR - RAIL_T                      # faccia esterna lamella
+RAIL_END = RAIL_L + TONGUE_L                        # punta della linguetta
 # Lo svaso scende dalla cima del bosso fino alla lastra: sotto la testa resta
 # esattamente PLATE_T, comunque si muovano RISE_H e PLATE_T.
 CBORE_DEPTH = RISE_H - PLATE_T
@@ -93,7 +94,11 @@ SCREW_L = 12.0                                      # M3x12
 SCREW_BITE = SCREW_L - SCREW_STACK                  # impegno nell'inserto
 HEAD_GAP = RISE_H - (PLATE_T + SCREW_HEAD_H)        # aria testa vite/pannello
 
-HEAD_IN = 10.0                        # dove il braccio incontra l'angolo
+# Il braccio finisce sulla rientranza del piano d'appoggio, a (PAD_W, PAD_W)
+# dallo spigolo del pannello: cosi` tutta la sua faccia di testa e` dentro i
+# due rami del piano e ci si innesta di piatto, senza bisogno di un blocco
+# d'angolo che faccia da tramite.
+HEAD_IN = PAD_W                       # dove il braccio incontra l'angolo
 
 # ---------------------------------------------------------------- helpers
 # Copiati da build_case.py di proposito: build_case.py resta intoccato e
@@ -165,6 +170,18 @@ def weld(ob, dist=1e-4):
     bm = bmesh.new()
     bm.from_mesh(ob.data)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=dist)
+    # geometria sciolta: dove due facce si sfiorano tangenti il solver EXACT
+    # lascia ogni tanto uno spigolo di qualche micron senza facce attaccate.
+    # Non e` un buco (il guscio resta chiuso) ma verify_mount.py lo conta come
+    # spigolo non-manifold, e a ragione: e` roba che non deve finire nell'STL.
+    # Si toglie solo cio` che NON ha facce, quindi nessuna superficie vera puo`
+    # sparire di qui.
+    loose_e = [e for e in bm.edges if not e.link_faces]
+    if loose_e:
+        bmesh.ops.delete(bm, geom=loose_e, context="EDGES")
+    loose_v = [v for v in bm.verts if not v.link_faces]
+    if loose_v:
+        bmesh.ops.delete(bm, geom=loose_v, context="VERTS")
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bm.to_mesh(ob.data)
     bm.free()
@@ -246,47 +263,42 @@ def mapper(sx, sy):
 
 
 def corner_parts(sx, sy):
-    """Testa d'angolo: piano d'appoggio, montanti rigidi, due linguette."""
-    L = mapper(sx, sy)
-    cw, cl, clr = CORNER_W, CORNER_L, PANEL_CLR
-    t_in, t_out = -clr, -clr - TONGUE_T          # facce della linguetta
-    u0 = cl - TONGUE_ROOT                        # radice, dentro la testa
-    u1 = cl + TONGUE_L                           # punta della linguetta
-    parts = []
+    """Testa d'angolo: due lamelle, due rami del piano d'appoggio, due denti.
 
-    # blocco d'angolo: quadrato pieno che porta i montanti e le radici delle
-    # linguette. Arriva solo a CORNER_L in u e v: oltre, la fascia esterna al
-    # bordo del pannello e` riservata alle linguette.
-    parts.append(prism(f"blk_{sx:+d}{sy:+d}",
-                       [L(-cw, -cw), L(cl, -cw), L(cl, cl), L(-cw, cl)],
-                       0.0, RISE_H))
+    La lamella e` UN prisma solo dal vertice fino alla punta della linguetta:
+    il tratto u < RAIL_L e` fasciato dal piano d'appoggio e quindi rigido (e`
+    lui il fermo laterale), oltre RAIL_L e` la linguetta che flette in pianta.
+    Montante e linguetta erano due pezzi separati con la stessa sezione nella
+    stessa banda: non c'era niente da separare."""
+    L = mapper(sx, sy)
+    parts = []
 
     for swap in (False, True):
         def P(u, v, _s=swap):
             return L(v, u) if _s else L(u, v)
         tag = f"{'v' if swap else 'u'}_{sx:+d}{sy:+d}"
 
-        # piano d'appoggio: un ramo per bordo, non un piastrone pieno. Si ferma
-        # a PAD_IN dal bordo del pannello: fra lui e la linguetta restano GAP
-        # mm d'aria. Se si toccassero, l'unione li salderebbe e la linguetta
-        # non flette piu`.
+        # lamella: montante rigido + linguetta elastica. Parte dal vertice
+        # (u = RAIL_OUT) cosi` le due lamelle dell'angolo si incastrano fra
+        # loro. Alta tutto il pezzo e appoggiata al piano di stampa: flette
+        # IN PIANTA, non in Z.
+        parts.append(prism(f"rail_{tag}",
+                           [P(RAIL_OUT, RAIL_OUT), P(RAIL_END, RAIL_OUT),
+                            P(RAIL_END, RAIL_IN), P(RAIL_OUT, RAIL_IN)],
+                           0.0, LIP_Z1))
+        # piano d'appoggio: un ramo per bordo, non un piastrone pieno. Fascia
+        # la lamella per tutto il tratto rigido e si ferma NETTO a RAIL_L: e`
+        # quello a fissare la radice della linguetta. Oltre RAIL_L la lamella
+        # resta libera su tutti e due i fianchi, quindi non serve nessuna aria
+        # di manovra da controllare.
         parts.append(prism(f"pad_{tag}",
-                           [P(PAD_IN, PAD_IN), P(PAD_S, PAD_IN),
-                            P(PAD_S, PAD_W), P(PAD_IN, PAD_W)],
+                           [P(RAIL_OUT, RAIL_OUT), P(RAIL_L, RAIL_OUT),
+                            P(RAIL_L, PAD_W), P(RAIL_OUT, PAD_W)],
                            0.0, RISE_H))
-        # montante: fermo laterale rigido in pianta, separato dalle linguette.
-        parts.append(prism(f"post_{tag}",
-                           [P(-cw, -cw), P(cl, -cw), P(cl, t_in), P(-cw, t_in)],
-                           0.0, LIP_Z1))
-        # linguetta elastica: lamella verticale alta tutto il pezzo, quindi
-        # appoggiata al piano di stampa. Flette IN PIANTA, non in Z.
-        parts.append(prism(f"tongue_{tag}",
-                           [P(u0, t_out), P(u1, t_out), P(u1, t_in), P(u0, t_in)],
-                           0.0, LIP_Z1))
         # dente: scavalca il pannello di LIP_OVER
         parts.append(prism(f"lip_{tag}",
-                           [P(cl + LIP_START, t_in), P(u1, t_in),
-                            P(u1, LIP_OVER), P(cl + LIP_START, LIP_OVER)],
+                           [P(RAIL_L + LIP_START, RAIL_IN), P(RAIL_END, RAIL_IN),
+                            P(RAIL_END, LIP_OVER), P(RAIL_L + LIP_START, LIP_OVER)],
                            LIP_Z0, LIP_Z1))
         # Niente aletta di sgancio: sporgeva oltre lo spigolo del pannello ed
         # era l'unica cosa che usciva dal profilo. Non serve: la linguetta sta
@@ -308,8 +320,8 @@ def corner_ramps(sx, sy):
     k = LIP_OVER + LIP_Z0 + RAMP_LEAD
     zlo, zhi = LIP_Z0 - 1.0, LIP_Z1 + 1.0
     tri = [(k - zlo, zlo), (k - zlo, zhi), (k - zhi, zhi)]
-    a0 = CORNER_L + LIP_START - 0.5
-    a1 = CORNER_L + TONGUE_L + 0.5
+    a0 = RAIL_L + LIP_START - 0.5
+    a1 = RAIL_END + 0.5
     for swap in (False, True):
         verts = []
         for a in (a0, a1):
@@ -396,15 +408,19 @@ os.makedirs(OUT_DIR, exist_ok=True)
 bpy.ops.object.select_all(action="DESELECT")
 mount.select_set(True)
 bpy.context.view_layer.objects.active = mount
-bpy.ops.wm.stl_export(filepath=os.path.join(OUT_DIR, "panel_mount.stl"),
-                      export_selected_objects=True, apply_modifiers=True)
+stl_path = os.path.join(OUT_DIR, "panel_mount.stl")
+if "stl_export" in dir(bpy.ops.wm):             # Blender >= 4.2
+    bpy.ops.wm.stl_export(filepath=stl_path, export_selected_objects=True,
+                          apply_modifiers=True)
+else:                                          # Blender 4.0/4.1
+    bpy.ops.export_mesh.stl(filepath=stl_path, use_selection=True)
 
 # -------------------------------------------------------------------- report
 
 E_PETG = 1800.0                       # modulo a flessione, MPa (ordine di grandezza)
 RHO_PETG = 1.27e-3                    # g/mm3
-strain = 1.5 * LIP_OVER * TONGUE_T / TONGUE_L ** 2
-inertia = LIP_Z1 * TONGUE_T ** 3 / 12.0
+strain = 1.5 * LIP_OVER * RAIL_T / TONGUE_L ** 2
+inertia = LIP_Z1 * RAIL_T ** 3 / 12.0
 force = 3.0 * E_PETG * inertia * LIP_OVER / TONGUE_L ** 3
 
 
@@ -451,7 +467,7 @@ arm_sigma = 12.0 * arm_len / arm_w
 arm_defl = 12.0 * arm_len ** 3 / (3.0 * E_PETG * arm_i)
 print(f"    vento ~12 N per angolo -> {arm_sigma:.0f} MPa e {arm_defl:.1f} mm di "
       f"freccia (PETG cede ~50 MPa){'  ** ALTO **' if arm_sigma > 20 else ''}")
-print(f"  8 linguette (2 per angolo): {TONGUE_L} x {TONGUE_T} mm alte {LIP_Z1:.1f}, "
+print(f"  8 linguette (2 per angolo): {TONGUE_L} x {RAIL_T} mm alte {LIP_Z1:.1f}, "
       f"dente {LIP_OVER} mm")
 print(f"  deformazione allo scatto {100 * strain:.2f}% (limite pratico PETG ~3%)"
       f"{'  ** ALTA **' if strain > 0.03 else ''}")

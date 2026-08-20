@@ -35,7 +35,7 @@ modificata.
   delle viti e il coperchio** usando tutte e sei le M3 esistenti, quattro
   bracci diagonali e quattro teste d'angolo con le linguette a scatto.
 
-Ingombro 176 × 176 × 12.2 mm, ~25 g in PETG a riempimento 30%. Il pannello
+Ingombro 175.6 × 175.6 × 12.2 mm, ~22 g in PETG a riempimento 30%. Il pannello
 appoggia 8 mm sopra il coperchio.
 
 Il pannello è di **misura fissa** (`PANEL_W`, `PANEL_H`). È la scelta che ha
@@ -65,9 +65,12 @@ blender --background --factory-startup --python build_case.py
 blender --background --factory-startup --python build_mount.py
 ```
 
-Funziona anche da shell (Blender 5.2 installato in `/usr/bin/blender`; esporter
-`bpy.ops.wm.stl_export`). In alternativa via MCP (`execute_blender_code`) dentro
-una sessione Blender aperta. Lo script cancella la scena, la ricostruisce da
+Funziona anche da shell. In `/usr/bin/blender` c'è **Blender 4.0.2**, che non
+ha `bpy.ops.wm.stl_export`: `build_mount.py` sceglie da solo fra quello e
+`bpy.ops.export_mesh.stl` (4.0/4.1). `build_case.py` usa ancora solo il primo,
+quindi da shell gli STL della scatola vanno rigenerati con un Blender ≥ 4.2.
+In alternativa via MCP (`execute_blender_code`) dentro una sessione Blender
+aperta. Lo script cancella la scena, la ricostruisce da
 zero ed esporta i due STL in questa cartella. Ignora l'errore
 `ModuleNotFoundError: cattrs` all'avvio: è un addon di sistema, non riguarda noi.
 
@@ -292,15 +295,32 @@ zero ed esporta i due STL in questa cartella. Ignora l'errore
   supporti in un pezzo unico — una linguetta corta sospesa a metà altezza, come
   quella della vecchia clip, qui sarebbe in aria. Nota che l'altezza entra
   linearmente nella forza di scatto e **non** nella deformazione: sono
-  `TONGUE_T` e `TONGUE_L` a governare lo strain, l'altezza governa solo quanto
+  `RAIL_T` e `TONGUE_L` a governare lo strain, l'altezza governa solo quanto
   è dura.
-- Fra la linguetta e il piano d'appoggio c'è `GAP` = 1.2 mm d'aria. Se il piano
-  arrivasse a toccarla, l'unione booleana **le salderebbe insieme** e la
-  linguetta smetterebbe di flettere: lo scatto diventerebbe una frattura. Il
-  piano si ferma perciò a `PAD_IN` dentro il bordo del pannello, e un test
-  apposito (`aria fra linguetta e piano`) sonda quello spazio.
-- Il fermo laterale d'angolo è un **montante rigido**, separato dalle
-  linguette: le linguette trattengono in Z, non in pianta.
+- **Montante e linguetta sono lo stesso prisma** (`rail_*`), che corre dal
+  vertice dell'angolo fino alla punta: avevano già la stessa sezione nella
+  stessa banda, separarli non separava niente. Il tratto `u < RAIL_L` è
+  fasciato dal piano d'appoggio e quindi rigido — è lui il fermo laterale in
+  pianta — e oltre `RAIL_L` è la linguetta che flette. `RAIL_L` è la posizione
+  della radice: `TONGUE_L` si misura da lì, quindi spostandolo la linguetta
+  non cambia lunghezza, cambia solo quanto pezzo la precede.
+- **Niente blocco d'angolo.** C'era un quadrato pieno 15 × 15 × 8 per angolo
+  che faceva da tramite fra montanti, piano e braccio: era il pezzo più pesante
+  della testa e non portava carico che il piano non porti già. Ora i due rami
+  del piano si sovrappongono nel quadrato d'angolo e ci si innestano da soli il
+  braccio e le due lamelle. La testa d'angolo è passata da 4.5 a 3.3 cm³ e da
+  9 prismi a 6, il pezzo intero da 36.1 a 32.2 cm³.
+- **La radice della linguetta la fissa il piano d'appoggio**, che perciò
+  finisce **netto a `RAIL_L`**: da lì in poi la lamella ha tutti e due i
+  fianchi liberi. È il motivo per cui non serve più nessuna aria di manovra
+  fra linguetta e piano (prima era `GAP` = 1.2 mm, con un test apposito a
+  sondarla, e bastava sbagliare un segno perché l'unione le saldasse insieme).
+  Se allunghi il piano oltre `RAIL_L` te la ricompri.
+- Il braccio finisce sullo **spigolo rientrante** fra i due rami del piano,
+  cioè a `HEAD_IN = PAD_W` dallo spigolo del pannello: è la sola posizione in
+  cui tutta la faccia di testa del braccio cade dentro il piano (metà in un
+  ramo, metà nell'altro) e l'innesto è di piatto. Non è un numero libero: si
+  muove con `PAD_W`, ed è per questo che è scritto così.
 - Il pezzo è **unione di prismi convessi estrusi in Z da z = 0**: niente
   sottosquadri, si stampa senza un solo supporto e con adesione piena. L'unica
   sporgenza è il dente (1.5 mm) e la sua rampa a 45°. **Non introdurre feature
@@ -319,10 +339,17 @@ zero ed esporta i due STL in questa cartella. Ignora l'errore
   per evitare le facce complanari sul piano di stampa. Peggiora e basta — il
   taglio finale rompe la mesh in tre gusci.
 - `verify_mount.py` controlla per primo che il pezzo sia **un solo guscio
-  chiuso**. Non è pignoleria: le otto linguette e il piano si sfiorano a 1.2 mm,
-  e basta un segno sbagliato perché una resti staccata — lo slicer stamperebbe
-  un coriandolo e il pannello non avrebbe aggancio, senza che nessun test di
-  appartenenza per punti se ne accorga.
+  chiuso**. Non è pignoleria: ogni testa d'angolo è tenuta insieme da
+  sovrapposizioni volumetriche di pochi millimetri, e basta un segno sbagliato
+  perché una lamella resti staccata — lo slicer stamperebbe un coriandolo e il
+  pannello non avrebbe aggancio, senza che nessun test di appartenenza per
+  punti se ne accorga.
+- `weld()` toglie anche la **geometria sciolta** (spigoli e vertici senza
+  facce). Dove due facce si sfiorano tangenti il solver EXACT ne lascia ogni
+  tanto uno lungo qualche micron: il guscio resta chiuso, ma è roba che non
+  deve finire nell'STL e `verify_mount.py` la conta — a ragione — come spigolo
+  non-manifold. Si cancella solo ciò che **non ha facce**, quindi nessuna
+  superficie vera può sparire di lì.
 - La montatura si smonta con il pannello attaccato; per aprire la scatola si
   tolgono le sei viti e viene via tutto insieme.
 

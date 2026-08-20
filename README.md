@@ -53,15 +53,18 @@ prende il pannello per i quattro angoli con otto linguette a scatto.
 - Del coperchio tocca **solo i lug e la striscia sopra le pareti**, mai la
   campata centrale: il coperchio non viene inarcato e la tenuta non si apre
 - **Otto linguette a scatto** (due per angolo), premibili dal fianco per sganciare
+- Testa d'angolo a **L**: due lamelle (fermo laterale e linguetta nello stesso
+  prisma) e due rami di piano d'appoggio che ne fissano la radice — niente
+  blocco pieno d'angolo, niente aria di manovra da rispettare
 - Tutto estruso in verticale dal piano di stampa: **nessun supporto**, nessun
   piedino, appoggio pieno sul piatto
 - Il pannello è di misura **fissa**: si cambia `PANEL_W`/`PANEL_H` e si
   ristampa
-- ~25 g in PETG, ingombro 176 × 176 × 12.2 mm
+- ~22 g in PETG, ingombro 175.6 × 175.6 × 12.2 mm
 
 | Dettaglio di una testa d'angolo |
 |---|
-| ![Testa d'angolo con montante e linguette](mount_corner.png) |
+| ![Testa d'angolo a L con le due lamelle](mount_corner.png) |
 
 Come si aggancia, in sezione attraverso una linguetta: il pannello scende, la
 rampa a 45° apre la linguetta verso l'esterno di 1.5 mm, e appena il dorso
@@ -100,7 +103,7 @@ nella cartella corrente.
 - Chiusura: 6 inserti filettati M3 a caldo + viti M3×10 a testa bombata
 - Fissaggio: 4 viti/bulloni M4 nelle alette
 - Montatura: un pezzo solo, appoggiato sul piatto così com'è; niente supporti,
-  ~25 g in PETG. Con la montatura le sei viti diventano **M3×12** (impegno 5.3
+  ~22 g in PETG. Con la montatura le sei viti diventano **M3×12** (impegno 5.3
   mm nell'inserto) e non serve nient'altro
 
 ## Licenza

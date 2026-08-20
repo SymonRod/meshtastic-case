@@ -32,9 +32,9 @@ PANEL_HX, PANEL_HY = G["PANEL_HX"], G["PANEL_HY"]
 PANEL_T, PANEL_CLR, PANEL_FIT = G["PANEL_T"], G["PANEL_CLR"], G["PANEL_FIT"]
 PANEL_BACK, LIP_Z0, LIP_Z1 = G["PANEL_BACK"], G["LIP_Z0"], G["LIP_Z1"]
 LIP_OVER, LIP_START = G["LIP_OVER"], G["LIP_START"]
-CORNER_L, CORNER_W, GAP = G["CORNER_L"], G["CORNER_W"], G["GAP"]
-TONGUE_T, TONGUE_L = G["TONGUE_T"], G["TONGUE_L"]
-PAD_IN, PAD_S, PAD_W = G["PAD_IN"], G["PAD_S"], G["PAD_W"]
+RAIL_T, RAIL_L, TONGUE_L = G["RAIL_T"], G["RAIL_L"], G["TONGUE_L"]
+RAIL_IN, RAIL_OUT, RAIL_END = G["RAIL_IN"], G["RAIL_OUT"], G["RAIL_END"]
+PAD_W = G["PAD_W"]
 SCREW_D, CBORE_D, CBORE_DEPTH = G["SCREW_D"], G["CBORE_D"], G["CBORE_DEPTH"]
 LUG_XY, LUG_CY, LUG_R = G["LUG_XY"], G["LUG_CY"], G["LUG_R"]
 CORNERS, CASE_HX = G["CORNERS"], G["CASE_HX"]
@@ -175,7 +175,8 @@ if G["HEAD_GAP"] < 0.5:
 for sx, sy in CORNERS:
     ax, ay = sx * 52.0, sy * LUG_CY
     ex, ey = sx * (PANEL_HX - G["HEAD_IN"]), sy * (PANEL_HY - G["HEAD_IN"])
-    for t in [i / 10.0 for i in range(1, 11)]:   # t=0 e` il foro del lug
+    for t in [i / 20.0 for i in range(2, 20)]:   # t=0 e` il foro del lug,
+                                                 # t=1 la faccia di testa
         px, py = ax + (ex - ax) * t, ay + (ey - ay) * t
         solid((px, py, 1.5), "braccio")
         solid((px, py, RISE_H - 0.5), "braccio alto fino al pannello")
@@ -206,10 +207,14 @@ for x in (-60.0, 0.0, 60.0):
 # ci deve essere materiale
 for sx, sy in CORNERS:
     L = mapper(sx, sy)
-    for u, v in ((PAD_IN + 1.0, PAD_IN + 1.0), (PAD_S - 2.0, PAD_IN + 1.0),
-                 (PAD_IN + 1.0, PAD_S - 2.0), (PAD_W - 2.0, PAD_W - 2.0)):
+    for u, v in ((1.0, 1.0), (RAIL_L - 1.5, 1.0),
+                 (1.0, RAIL_L - 1.5), (PAD_W - 1.0, PAD_W - 1.0)):
         x, y = L(u, v)
         solid((x, y, RISE_H - 0.5), "piano d'appoggio d'angolo")
+    # il braccio arriva sullo spigolo rientrante fra i due rami e ci si
+    # innesta di piatto: subito dietro la faccia di testa c'e` materiale
+    x, y = L(PAD_W + 1.0, PAD_W + 1.0)
+    solid((x, y, RISE_H - 0.5), "innesto del braccio sul piano")
 
 # ------------------------------------------------------------------ montanti
 for sx, sy in CORNERS:
@@ -217,12 +222,24 @@ for sx, sy in CORNERS:
     for swap in (False, True):
         def P(u, v, _s=swap):
             return L(v, u) if _s else L(u, v)
-        # montante: pieno fino in cima, fuori dal bordo del pannello
-        for u in (0.0, CORNER_L / 2.0, CORNER_L - 1.0):
-            x, y = P(u, -PANEL_CLR - CORNER_W / 2.0)
+        vmid = RAIL_IN - RAIL_T / 2.0
+        # tratto rigido della lamella: pieno fino in cima, fuori dal pannello
+        for u in (RAIL_OUT + 0.5, RAIL_L / 2.0, RAIL_L - 1.0):
+            x, y = P(u, vmid)
             solid((x, y, LIP_Z1 - 0.5), "montante d'angolo")
-        # fra montante e bordo del pannello: PANEL_CLR d'aria
-        x, y = P(CORNER_L / 2.0, -PANEL_CLR / 2.0)
+        # ed e` fasciato dal piano d'appoggio per tutto quel tratto: e` questo
+        # a fissare la radice della linguetta, ora che il blocco non c'e` piu`
+        for u in (RAIL_OUT + 0.5, RAIL_L / 2.0, RAIL_L - 1.0):
+            x, y = P(u, 0.5)
+            solid((x, y, RISE_H - 0.5), "piano che fascia il montante")
+        # il piano finisce NETTO a RAIL_L: da li` in poi la linguetta ha
+        # tutti e due i fianchi liberi
+        for u in (RAIL_L + 1.5, RAIL_L + TONGUE_L / 2.0):
+            for v in (0.5, PAD_W / 2.0):
+                x, y = P(u, v)
+                empty((x, y, RISE_H - 0.5), "fianco interno della linguetta libero")
+        # fra lamella e bordo del pannello: PANEL_CLR d'aria
+        x, y = P(RAIL_L / 2.0, -PANEL_CLR / 2.0)
         empty((x, y, zmid), "aria fra pannello e montante")
 
 # ----------------------------------------------------------------- linguette
@@ -231,35 +248,29 @@ for sx, sy in CORNERS:
     for swap in (False, True):
         def P(u, v, _s=swap):
             return L(v, u) if _s else L(u, v)
-        vmid = -PANEL_CLR - TONGUE_T / 2.0
+        vmid = RAIL_IN - RAIL_T / 2.0
         # corpo della linguetta, da terra fino in cima
-        for u in (CORNER_L + 2.0, CORNER_L + TONGUE_L / 2.0, CORNER_L + TONGUE_L - 1.0):
+        for u in (RAIL_L + 2.0, RAIL_L + TONGUE_L / 2.0, RAIL_END - 1.0):
             for z in (0.5, RISE_H, LIP_Z1 - 0.3):
                 x, y = P(u, vmid)
                 solid((x, y, z), "linguetta")
-        # ARIA fra linguetta e piano d'appoggio: se sparisce, l'unione le
-        # salda e la linguetta non flette piu`
-        for u in (CORNER_L + 2.0, CORNER_L + TONGUE_L / 2.0, CORNER_L + TONGUE_L - 1.0):
-            for z in (0.5, RISE_H - 0.5):
-                x, y = P(u, (PAD_IN - PANEL_CLR) / 2.0)   # meta` del gap
-                empty((x, y, z), "aria fra linguetta e piano")
         # dente: scavalca il bordo del pannello. Si sonda appena sopra LIP_Z0,
         # dove la rampa a 45 gradi non ha ancora mangiato il profilo.
-        for u in (CORNER_L + LIP_START + 1.0, CORNER_L + TONGUE_L - 1.0):
+        for u in (RAIL_L + LIP_START + 1.0, RAIL_L + TONGUE_L - 1.0):
             x, y = P(u, 0.6)
             solid((x, y, LIP_Z0 + 0.3), "dente")
             # sotto il dente ci passa il pannello
             empty((x, y, zmid), "sotto il dente: passa il pannello")
         # prima di LIP_START il dente non c'e` ancora (e` la` che la linguetta
         # deve poter flettere senza toccare il pannello)
-        x, y = P(CORNER_L + 2.0, 0.6)
+        x, y = P(RAIL_L + 2.0, 0.6)
         empty((x, y, LIP_Z0 + 0.3), "dente assente sulla radice")
         # rampa a 45 gradi: in alto, verso l'interno, il dente e` tagliato
-        x, y = P(CORNER_L + TONGUE_L - 2.0, LIP_OVER - 0.2)
+        x, y = P(RAIL_L + TONGUE_L - 2.0, LIP_OVER - 0.2)
         empty((x, y, LIP_Z1 - 0.2), "invito a 45 gradi sul dente")
         # niente aletta di sgancio: fuori dalla linguetta non sporge nulla
-        for u in (CORNER_L + TONGUE_L - 2.0, CORNER_L + TONGUE_L / 2.0):
-            x, y = P(u, -PANEL_CLR - TONGUE_T - 1.5)
+        for u in (RAIL_L + TONGUE_L - 2.0, RAIL_L + TONGUE_L / 2.0):
+            x, y = P(u, RAIL_OUT - 1.5)
             empty((x, y, LIP_Z1 - 1.0), "niente aletta oltre la linguetta")
 
 # ------------------------------------------------------------------- niente

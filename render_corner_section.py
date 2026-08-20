@@ -25,7 +25,7 @@ HX, HY = g["PANEL_HX"], g["PANEL_HY"]
 
 # Si seziona l'angolo (+1, +1): li` u cresce verso -X e v verso -Y, quindi la
 # fetta e` una lastra normale a X e la vista guarda lungo X.
-CUT_U = g["CORNER_L"] + g["LIP_START"] + 6.0     # dove tagliare, in pieno dente
+CUT_U = g["RAIL_L"] + g["LIP_START"] + 6.0     # dove tagliare, in pieno dente
 SLICE = 8.0                                      # spessore della fetta
 DEPTH = 24.0                                     # quanto si mostra verso l'interno
 SEP = 44.0                                       # distanza fra i due stati
