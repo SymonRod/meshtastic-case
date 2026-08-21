@@ -47,7 +47,7 @@ CASE_HX = 58.9                        # meta` lunghezza esterna della scatola
 PANEL_W, PANEL_H = 170.0, 170.0       # ingombro del pannello (X, Y)
 PANEL_T = 2.4                         # spessore del laminato in vetroresina
 PANEL_FIT = 0.3                       # aria in Z fra dorso e dente
-PANEL_CLR = 0.4                       # aria in pianta fra bordo e montanti
+PANEL_CLR = 0.7                       # aria in pianta fra bordo e montanti
 
 # ------------------------------------------------------------------- corpo
 # Due sole quote in Z: la lastra e` sottile, e sale a RISE_H solo dove serve
@@ -71,7 +71,7 @@ RAIL_T = 2.4                          # spessore della lamella
 RAIL_L = 12.0                         # tratto di lamella fasciato dal piano:
                                       # e` li` che la linguetta ha la radice
 PAD_W = 7.0                           # larghezza dei rami del piano d'appoggio
-TONGUE_L = 24.0                       # sbalzo libero della linguetta
+TONGUE_L = 28.0                       # sbalzo libero della linguetta
 LIP_OVER = 1.5                        # quanto il dente scavalca il pannello
 LIP_H = 1.5                           # altezza del dente
 LIP_START = 10.0                      # da dove parte il dente lungo lo sbalzo

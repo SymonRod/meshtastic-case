@@ -81,7 +81,7 @@ prende il pannello per i quattro angoli con otto linguette a scatto.
   piedino, appoggio pieno sul piatto
 - Il pannello è di misura **fissa**: si cambia `PANEL_W`/`PANEL_H` e si
   ristampa
-- ~22 g in PETG, ingombro 175.6 × 175.6 × 12.2 mm
+- ~23 g in PETG, ingombro 176.2 × 176.2 × 12.2 mm
 
 | Dettaglio di una testa d'angolo |
 |---|
@@ -127,7 +127,7 @@ in `models/`.
 - Chiusura: 6 inserti filettati M3 a caldo + viti M3×10 a testa bombata
 - Fissaggio: 4 viti/bulloni M4 nelle alette
 - Montatura: un pezzo solo, appoggiato sul piatto così com'è; niente supporti,
-  ~22 g in PETG. Con la montatura le sei viti diventano **M3×12** (impegno 5.3
+  ~23 g in PETG. Con la montatura le sei viti diventano **M3×12** (impegno 5.3
   mm nell'inserto) e non serve nient'altro
 
 ## Licenza

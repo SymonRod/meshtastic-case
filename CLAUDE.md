@@ -35,7 +35,7 @@ modificata.
   delle viti e il coperchio** usando tutte e sei le M3 esistenti, quattro
   bracci diagonali e quattro teste d'angolo con le linguette a scatto.
 
-Ingombro 175.6 × 175.6 × 12.2 mm, ~22 g in PETG a riempimento 30%. Il pannello
+Ingombro 176.2 × 176.2 × 12.2 mm, ~23 g in PETG a riempimento 30%. Il pannello
 appoggia 8 mm sopra il coperchio.
 
 Il pannello è di **misura fissa** (`PANEL_W`, `PANEL_H`). È la scelta che ha
@@ -318,8 +318,8 @@ cancellano la scena e la ricostruiscono da zero. Ignora l'errore
   Non servono: la linguetta sta tutta fuori dal bordo del pannello, quindi la
   si preme direttamente sul fianco per sganciare.
 - Il pannello si aggancia premendolo giù: due linguette per angolo, otto in
-  tutto, ognuna 24 × 2.4 mm con un dente da 1.5. Deformazione allo scatto
-  0.94% (il PETG regge ~3% a breve termine), forza ~8 N per linguetta, ~15 N
+  tutto, ognuna 28 × 2.4 mm con un dente da 1.5. Deformazione allo scatto
+  0.69% (il PETG regge ~3% a breve termine), forza ~5 N per linguetta, ~10 N
   per angolo. Se allunghi il dente o accorci la linguetta ricontrolla il numero
   stampato dal report: sopra il 3% la linguetta non scatta, si spezza.
 - Le linguette sono **alte tutto il pezzo e partono dal piano di stampa**:
