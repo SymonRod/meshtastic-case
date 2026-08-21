@@ -27,11 +27,11 @@ contando le alette.
 
 ## Montatura del pannello solare
 
-**Un pezzo solo**, in `build_mount.py`. La scatola **non viene toccata**:
+**Un pezzo solo**, in `scripts/build_mount.py`. La scatola **non viene toccata**:
 nessun foro nuovo, nessun inserto nuovo, nessuna quota di `build_case.py`
 modificata.
 
-- `panel_mount.stl` ×1 — anello rettangolare che si infila **fra le teste
+- `models/panel_mount.stl` ×1 — anello rettangolare che si infila **fra le teste
   delle viti e il coperchio** usando tutte e sei le M3 esistenti, quattro
   bracci diagonali e quattro teste d'angolo con le linguette a scatto.
 
@@ -45,20 +45,27 @@ autofilettanti esistevano **tutti e soli** per rendere le clip riposizionabili.
 Se un giorno serve la regolabilità, si rimette quella meccanica — non si
 cerchi di ottenerla deformando questo pezzo.
 
-## File
+## Struttura dei file
 
-- `build_case.py` — sorgente parametrico, unica fonte di verità. Tutte le quote
+- `scripts/build_case.py` — sorgente parametrico, unica fonte di verità. Tutte le quote
   sono costanti in cima al file.
-- `case_base.stl`, `case_lid.stl` — output rigenerati a ogni run.
-- `verify_case.py` — rigenera e sonda ~150 punti campione (vedi *Verifica*).
-- `build_mount.py` — montatura del pannello, stessa filosofia: quote in cima,
-  `panel_mount.stl` rigenerato a ogni run.
-- `verify_mount.py` — topologia (un solo guscio, chiuso) + ~660 punti campione
+- `models/case_base.stl`, `models/case_lid.stl` — output rigenerati a ogni run.
+- `models/oring_groove_shim.stl` — rialzo da 0.20 mm per aggiornare la cava O-ring
+  3.8 × 2.2 di un case gia` stampato. E` un binario centrale largo 1.8 mm,
+  non una fascia larga quanto la cava: cosi` recupera la compressione senza
+  togliere al silicone il volume laterale in cui spanciare.
+- `models/oring_groove_shim_high_compression.stl` — variante 0.30 × 1.20 mm: porta
+  la compressione al 37% conservando lo stesso volume libero della cava nuova.
+- `scripts/build_oring_shim.py` — sorgente autonomo del rialzo.
+- `scripts/verify_case.py` — rigenera e sonda ~150 punti campione (vedi *Verifica*).
+- `scripts/build_mount.py` — montatura del pannello, stessa filosofia: quote in cima,
+  `models/panel_mount.stl` rigenerato a ogni run.
+- `scripts/verify_mount.py` — topologia (un solo guscio, chiuso) + ~660 punti campione
   sulla montatura.
-- `render_mount.py` — render di controllo dell'assieme.
-- `render_corner_section.py` — sezione della testa d'angolo: come si aggancia.
-- `render_seal_section.py` — sezione della tenuta, corda libera e schiacciata
-  affiancate (`seal_section.png`). Taglia con booleane **gli STL importati**,
+- `scripts/render_mount.py` — render di controllo dell'assieme.
+- `scripts/render_corner_section.py` — sezione della testa d'angolo: come si aggancia.
+- `scripts/render_seal_section.py` — sezione della tenuta, corda libera e schiacciata
+  affiancate (`renders/seal_section.png`). Taglia con booleane **gli STL importati**,
   non un modello ricostruito: se i file nella cartella non corrispondono più al
   sorgente, il render lo fa vedere invece di nasconderlo. Perciò **non esegue
   `build_case.py`** e non riscrive niente — l'unica cosa disegnata è la corda,
@@ -70,21 +77,25 @@ cerchi di ottenerla deformando questo pezzo.
   L'importer lascia la mesh con più di un utente e `modifier_apply` si
   rifiuta di lavorarci: si stacca con `ob.data = ob.data.copy()` subito dopo
   l'import.
+- `scripts/render_shim_section.py` — sezione specifica del case gia` stampato con cava
+  3.8 × 2.2 e rialzo ad alta compressione 1.2 × 0.3. Recupera da git gli STL
+  reali del commit `3188763`, precedente al cambio della cava, e importa lo
+  STL reale del rialzo. Produce `renders/seal_shim_section.png`.
+- `tools/` — utility di sviluppo non richieste per generare o verificare i pezzi.
 
 ## Rigenerare
 
 ```
-blender --background --factory-startup --python build_case.py
-blender --background --factory-startup --python build_mount.py
+blender --background --factory-startup --python scripts/build_case.py
+blender --background --factory-startup --python scripts/build_mount.py
+blender --background --factory-startup --python scripts/build_oring_shim.py
 ```
 
 Funziona anche da shell. In `/usr/bin/blender` c'è **Blender 4.0.2**, che non
-ha `bpy.ops.wm.stl_export`: `build_mount.py` sceglie da solo fra quello e
-`bpy.ops.export_mesh.stl` (4.0/4.1). `build_case.py` usa ancora solo il primo,
-quindi da shell gli STL della scatola vanno rigenerati con un Blender ≥ 4.2.
-In alternativa via MCP (`execute_blender_code`) dentro una sessione Blender
-aperta. Lo script cancella la scena, la ricostruisce da
-zero ed esporta i due STL in questa cartella. Ignora l'errore
+ha `bpy.ops.wm.stl_export`: gli script scelgono da soli fra quello e
+`bpy.ops.export_mesh.stl` (4.0/4.1). Gli output vanno sempre in `models/` o
+`renders/`, indipendentemente dalla directory da cui si lanciano. Gli script
+cancellano la scena e la ricostruiscono da zero. Ignora l'errore
 `ModuleNotFoundError: cattrs` all'avvio: è un addon di sistema, non riguarda noi.
 
 ## Convenzioni geometriche

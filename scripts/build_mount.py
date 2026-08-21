@@ -19,7 +19,7 @@ scatola), ma **z = 0 e` la faccia superiore del coperchio**, cioe` z = 32.1 in
 coordinate scatola. z = 0 e` anche il piano di stampa: tutto il pezzo e` una
 estrusione verticale che parte da li`.
 
-    blender --background --factory-startup --python build_mount.py
+    blender --background --factory-startup --python scripts/build_mount.py
 """
 import math
 import os
@@ -28,7 +28,9 @@ import re
 import bmesh
 import bpy
 
-OUT_DIR = os.path.dirname(os.path.abspath(__file__)) or "/home/rod/meshtastic-case"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+MODEL_DIR = os.path.join(PROJECT_DIR, "models")
 
 # ------------------------------------------------- interfaccia con la scatola
 # Devono coincidere con build_case.py: sono le quote delle viti del coperchio.
@@ -216,7 +218,7 @@ def check_case_interface():
     """Rilegge build_case.py e verifica che le quote dell'interfaccia (viti del
     coperchio) siano ancora quelle. Se qualcuno tocca i lug, la montatura non
     ci va piu` sopra: meglio fermarsi qui che scoprirlo in stampa."""
-    src_path = os.path.join(OUT_DIR, "build_case.py")
+    src_path = os.path.join(SCRIPT_DIR, "build_case.py")
     if not os.path.exists(src_path):
         print("!! build_case.py non trovato: interfaccia non verificata")
         return
@@ -404,11 +406,11 @@ check_case_interface()
 
 mount = weld(build_mount())
 
-os.makedirs(OUT_DIR, exist_ok=True)
+os.makedirs(MODEL_DIR, exist_ok=True)
 bpy.ops.object.select_all(action="DESELECT")
 mount.select_set(True)
 bpy.context.view_layer.objects.active = mount
-stl_path = os.path.join(OUT_DIR, "panel_mount.stl")
+stl_path = os.path.join(MODEL_DIR, "panel_mount.stl")
 if "stl_export" in dir(bpy.ops.wm):             # Blender >= 4.2
     bpy.ops.wm.stl_export(filepath=stl_path, export_selected_objects=True,
                           apply_modifiers=True)

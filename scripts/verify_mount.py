@@ -8,7 +8,7 @@ intersezioni), piu` due controlli topologici che il ray-cast non vede:
     lo slicer stampa un coriandolo e la scatola resta senza aggancio);
   - il pezzo e` chiuso (ogni spigolo su due facce).
 
-    blender --background --factory-startup --python verify_mount.py
+    blender --background --factory-startup --python scripts/verify_mount.py
 """
 import os
 import sys
@@ -18,11 +18,11 @@ import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
-HERE = os.path.dirname(os.path.abspath(__file__)) or "/home/rod/meshtastic-case"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # esegue build_mount.py: costanti e mesh vengono da li`, non sono riscritte qui
-src = open(os.path.join(HERE, "build_mount.py")).read()
-G = {"__name__": "__main__", "__file__": os.path.join(HERE, "build_mount.py")}
+src = open(os.path.join(SCRIPT_DIR, "build_mount.py")).read()
+G = {"__name__": "__main__", "__file__": os.path.join(SCRIPT_DIR, "build_mount.py")}
 exec(compile(src, "build_mount.py", "exec"), G)
 
 mount = G["mount"]

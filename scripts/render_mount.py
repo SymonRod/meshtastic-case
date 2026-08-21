@@ -1,6 +1,6 @@
 """Render di controllo della montatura: assieme e dettaglio di un angolo.
 
-    blender --background --factory-startup --python render_mount.py
+    blender --background --factory-startup --python scripts/render_mount.py
 
 Produce mount_assembly.png (scatola + montatura, vista isometrica),
 mount_assembly_panel.png (con il pannello agganciato) e mount_corner.png
@@ -14,9 +14,12 @@ import os
 import bpy
 import mathutils
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-src = open(os.path.join(HERE, "build_mount.py")).read()
-g = {"__name__": "__main__", "__file__": os.path.join(HERE, "build_mount.py")}
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+MODEL_DIR = os.path.join(PROJECT_DIR, "models")
+RENDER_DIR = os.path.join(PROJECT_DIR, "renders")
+src = open(os.path.join(SCRIPT_DIR, "build_mount.py")).read()
+g = {"__name__": "__main__", "__file__": os.path.join(SCRIPT_DIR, "build_mount.py")}
 with contextlib.redirect_stdout(io.StringIO()):
     exec(compile(src, "build_mount.py", "exec"), g)
 
@@ -45,11 +48,14 @@ def paint(ob, key):
 
 
 def import_stl(name):
-    path = os.path.join(HERE, name)
+    path = os.path.join(MODEL_DIR, name)
     if not os.path.exists(path):
         return None
     before = set(bpy.data.objects)
-    bpy.ops.wm.stl_import(filepath=path)
+    if "stl_import" in dir(bpy.ops.wm):
+        bpy.ops.wm.stl_import(filepath=path)
+    else:
+        bpy.ops.import_mesh.stl(filepath=path)
     return [o for o in bpy.data.objects if o not in before][0]
 
 
@@ -101,7 +107,8 @@ def shoot(target, ortho, direction, fname, hide=()):
     cam.location = mathutils.Vector(target) + d * 600.0
     cam.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
     cam.data.ortho_scale = ortho
-    scene.render.filepath = os.path.join(HERE, fname)
+    os.makedirs(RENDER_DIR, exist_ok=True)
+    scene.render.filepath = os.path.join(RENDER_DIR, fname)
     bpy.ops.render.render(write_still=True)
     for ob in hide:
         ob.hide_render = False

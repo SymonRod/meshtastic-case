@@ -1,6 +1,6 @@
 """Meshtastic case: 21700 cell + Seeed XIAO nRF52840 / Wio-SX1262 stack + N bulkhead.
 
-Parametric. Edit the constants below and re-run to regenerate base + lid and export STLs.
+Parametric. Edit the constants below and re-run to regenerate base + lid in models/.
 All dimensions in millimetres. Z+ is up; the box prints open-side-up, the lid flat.
 
 Revisione "guarnizione": cava continua per O-ring in corda di silicone Ø3 sul
@@ -15,7 +15,9 @@ import bpy
 
 # ---------------------------------------------------------------- parameters
 
-OUT_DIR = os.path.dirname(os.path.abspath(__file__)) or "/home/rod/meshtastic-case"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+MODEL_DIR = os.path.join(PROJECT_DIR, "models")
 
 CELL_D, CELL_L = 21.0, 70.0          # 21700 cell
 CELL_CLR = 0.6                        # diametral clearance around the cell
@@ -495,16 +497,16 @@ clear_scene()
 base = weld(build_base())
 lid = weld(build_lid())
 
-os.makedirs(OUT_DIR, exist_ok=True)
+os.makedirs(MODEL_DIR, exist_ok=True)
 for ob, fname in ((base, "case_base.stl"), (lid, "case_lid.stl")):
     bpy.ops.object.select_all(action="DESELECT")
     ob.select_set(True)
     bpy.context.view_layer.objects.active = ob
     if "stl_export" in dir(bpy.ops.wm):          # Blender >= 4.2
-        bpy.ops.wm.stl_export(filepath=os.path.join(OUT_DIR, fname),
+        bpy.ops.wm.stl_export(filepath=os.path.join(MODEL_DIR, fname),
                               export_selected_objects=True, apply_modifiers=True)
     else:                                        # Blender 4.0/4.1
-        bpy.ops.export_mesh.stl(filepath=os.path.join(OUT_DIR, fname),
+        bpy.ops.export_mesh.stl(filepath=os.path.join(MODEL_DIR, fname),
                                 use_selection=True)
 
 # ---------------------------------------------------------------- report
@@ -572,4 +574,4 @@ print(f"passacavo Ø{GLAND_D} nella parete +X a y={GLAND_CY} z={GLAND_CZ}; "
       f"cella finisce a x={CELL_CX + (CELL_L + 4) / 2.0:.1f} "
       f"({HX - (CELL_CX + (CELL_L + 4) / 2.0):.1f} mm liberi per il polo +), "
       f"bordo +Y della cella y={CELL_CY + CELL_R:.1f}")
-print("exported:", sorted(f for f in os.listdir(OUT_DIR) if f.endswith(".stl")))
+print("exported:", sorted(f for f in os.listdir(MODEL_DIR) if f.endswith(".stl")))

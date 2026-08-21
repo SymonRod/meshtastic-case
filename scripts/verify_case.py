@@ -3,9 +3,10 @@ import bpy, bmesh, math, os
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
-HERE = os.path.dirname(os.path.abspath(bpy.data.filepath or __file__))
-src = open(os.path.join(HERE, "build_case.py")).read()
-g = {"__name__": "__main__"}
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+src = open(os.path.join(SCRIPT_DIR, "build_case.py")).read()
+g = {"__name__": "__main__",
+     "__file__": os.path.join(SCRIPT_DIR, "build_case.py")}
 import io, contextlib
 with contextlib.redirect_stdout(io.StringIO()):
     exec(compile(src, "build_case.py", "exec"), g)

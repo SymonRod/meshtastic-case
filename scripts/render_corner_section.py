@@ -1,6 +1,6 @@
 """Sezione di una testa d'angolo attraverso la linguetta: come si aggancia.
 
-    blender --background --factory-startup --python render_corner_section.py
+    blender --background --factory-startup --python scripts/render_corner_section.py
 
 Taglia una fetta perpendicolare al bordo del pannello, in pieno dente, e la
 guarda di profilo. Due stati affiancati: pannello che scende (a sinistra) e
@@ -13,9 +13,11 @@ import os
 import bpy
 import mathutils
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-src = open(os.path.join(HERE, "build_mount.py")).read()
-g = {"__name__": "__main__", "__file__": os.path.join(HERE, "build_mount.py")}
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+RENDER_DIR = os.path.join(PROJECT_DIR, "renders")
+src = open(os.path.join(SCRIPT_DIR, "build_mount.py")).read()
+g = {"__name__": "__main__", "__file__": os.path.join(SCRIPT_DIR, "build_mount.py")}
 with contextlib.redirect_stdout(io.StringIO()):
     exec(compile(src, "build_mount.py", "exec"), g)
 
@@ -90,6 +92,7 @@ d = mathutils.Vector((1.0, 0.04, 0.05)).normalized()
 cam.location = mathutils.Vector((x0, HY - SEP / 2.0 - 8.0, 8.0)) + d * 400.0
 cam.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
 
-scene.render.filepath = os.path.join(HERE, "mount_corner_section.png")
+os.makedirs(RENDER_DIR, exist_ok=True)
+scene.render.filepath = os.path.join(RENDER_DIR, "mount_corner_section.png")
 bpy.ops.render.render(write_still=True)
 print("render: mount_corner_section.png")

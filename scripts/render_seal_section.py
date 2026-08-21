@@ -1,6 +1,6 @@
 """Sezione della tenuta, tagliata negli STL veri: corda libera e schiacciata.
 
-    blender --background --factory-startup --python render_seal_section.py
+    blender --background --factory-startup --python scripts/render_seal_section.py
 
 Importa case_base.stl e case_lid.stl e li taglia con delle booleane: la
 sezione e` quella della mesh esportata, non di un modello ricostruito da
@@ -29,14 +29,17 @@ import re
 import bpy
 import mathutils
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+MODEL_DIR = os.path.join(PROJECT_DIR, "models")
+RENDER_DIR = os.path.join(PROJECT_DIR, "renders")
 
 
 def case_constants(*names):
     """Legge le costanti da build_case.py senza eseguirlo (vedi
     check_case_interface in build_mount.py: stesso parser, stessa ragione)."""
     found = {}
-    for line in open(os.path.join(HERE, "build_case.py")):
+    for line in open(os.path.join(SCRIPT_DIR, "build_case.py")):
         m = re.match(r"^([A-Z_][A-Z0-9_, ]*)=\s*([^#]+)", line)
         if not m:
             continue
@@ -82,7 +85,7 @@ bpy.ops.object.delete()
 
 def import_stl(fname):
     before = set(bpy.data.objects)
-    path = os.path.join(HERE, fname)
+    path = os.path.join(MODEL_DIR, fname)
     if not os.path.exists(path):
         raise SystemExit(f"{fname} non trovato: rigenera con build_case.py")
     if "stl_import" in dir(bpy.ops.wm):          # Blender >= 4.2
@@ -218,7 +221,8 @@ cam.location = (mathutils.Vector((CUT_X, GROOVE_CY - SEP / 2.0, RIM_Z - 7.0))
                 + d * 400.0)
 cam.rotation_euler = d.to_track_quat("Z", "Y").to_euler()
 
-scene.render.filepath = os.path.join(HERE, "seal_section.png")
+os.makedirs(RENDER_DIR, exist_ok=True)
+scene.render.filepath = os.path.join(RENDER_DIR, "seal_section.png")
 bpy.ops.render.render(write_still=True)
 print(f"render: seal_section.png  (sezione degli STL a x={CUT_X:g}; "
       f"cava {GROOVE_W:g} x {GROOVE_D:g} letta da build_case.py, "
