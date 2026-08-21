@@ -13,7 +13,7 @@ Custodia stampabile in 3D per un nodo Meshtastic, con guarnizione O-ring.
   nella parete −X a z = 14.4, con scasso **interno** Ø23 × 4 (faccia esterna
   piana: il dado appoggia a filo e la chiave lo prende)
 - **Guarnizione O-ring**: corda di silicone Ø3 mm in cava continua sul bordo
-  della base (~312 mm di sviluppo, da giuntare a colla)
+  della base (~312 mm di sviluppo, da giuntare a colla), schiacciata al 33%
 - Chiusura con **6 viti M3** su inserti a caldo, in lug esterni **fuori dalla
   linea di tenuta**, raccordati R3 nelle pareti
 - **4 alette M4** complanari al pavimento per il fissaggio al dorso del pannello
@@ -57,6 +57,19 @@ cerchi di ottenerla deformando questo pezzo.
   sulla montatura.
 - `render_mount.py` — render di controllo dell'assieme.
 - `render_corner_section.py` — sezione della testa d'angolo: come si aggancia.
+- `render_seal_section.py` — sezione della tenuta, corda libera e schiacciata
+  affiancate (`seal_section.png`). Taglia con booleane **gli STL importati**,
+  non un modello ricostruito: se i file nella cartella non corrispondono più al
+  sorgente, il render lo fa vedere invece di nasconderlo. Perciò **non esegue
+  `build_case.py`** e non riscrive niente — l'unica cosa disegnata è la corda,
+  che negli STL non c'è, e le sue quote si leggono dal sorgente con lo stesso
+  mini-parser di `check_case_interface()`. La sezione compressa è a **volume
+  costante** (rettangolo alto `GROOVE_D` con i fianchi a semicerchio, largo
+  quanto serve perché l'area torni quella della corda tonda): è così che si
+  legge il riempimento e l'aria che resta ai fianchi, 0.02 mm per lato.
+  L'importer lascia la mesh con più di un utente e `modifier_apply` si
+  rifiuta di lavorarci: si stacca con `ob.data = ob.data.copy()` subito dopo
+  l'import.
 
 ## Rigenerare
 
@@ -82,11 +95,19 @@ zero ed esporta i due STL in questa cartella. Ignora l'errore
 ### Tenuta
 
 - Le pareti sono spesse **6.4 mm** perché è la larghezza minima che ospita la
-  cava dell'O-ring: 1.3 (spalla interna) + 3.8 (cava) + 1.3 (spalla esterna).
+  cava dell'O-ring: 1.2 (spalla interna) + 4.0 (cava) + 1.2 (spalla esterna).
   Non assottigliarle senza rifare questo conto. Il pavimento resta a 2.4.
-- Cava **3.8 × 2.2** per corda Ø3: schiacciamento 0.8 mm (27%), riempimento 85%.
+- Cava **4.0 × 2.0** per corda Ø3: schiacciamento 1.0 mm (33%), riempimento 88%.
   Il coperchio va in **battuta sulle spalle**, che fanno da fine corsa: è la
   battuta a definire la compressione, non il serraggio delle viti.
+  Era **3.8 × 2.2** (27%, 85%): sulla carta a norma, in pratica senza margine
+  per la planarità di un coperchio stampato lungo 118 mm, e alla prova della
+  doccia (21/08/2026) passava acqua. La cava è stata approfondita **e**
+  allargata insieme: il riempimento deve restare **sotto il 90%**, altrimenti
+  la corda — incomprimibile — non ha dove spanciare e fa da distanziale
+  impedendo la battuta, che è il modo più veloce per aprire la tenuta invece
+  di chiuderla. `GROOVE_MID` resta 3.2, quindi raggi d'angolo e mezzeria non
+  si sono mossi e nulla a valle è cambiato.
 - Le **viti stanno fuori dalla tenuta**, su sei lug esterni. È il vincolo che ha
   dettato tutto il resto: se il boss è dentro l'anello, l'acqua che entra nel
   foro del coperchio arriva in cavità passando sopra la testa del boss. Non

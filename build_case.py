@@ -15,7 +15,7 @@ import bpy
 
 # ---------------------------------------------------------------- parameters
 
-OUT_DIR = "/home/rod/meshtastic-case"
+OUT_DIR = os.path.dirname(os.path.abspath(__file__)) or "/home/rod/meshtastic-case"
 
 CELL_D, CELL_L = 21.0, 70.0          # 21700 cell
 CELL_CLR = 0.6                        # diametral clearance around the cell
@@ -27,7 +27,7 @@ BOARD_X, BOARD_Y, BOARD_Z = 17.8, 21.0, 13.0
 BOARD_CX = -14.0                      # verso -X, vicino al connettore N
 
 # Pareti a 6.4 mm: e` la larghezza minima per ospitare la cava dell'O-ring
-# (1.3 + 3.8 + 1.3). Il pavimento resta sottile.
+# (1.2 + 4.0 + 1.2). Il pavimento resta sottile.
 WALL, FLOOR, LID_T = 6.4, 2.4, 3.2
 LIP_H, LIP_CLR = 3.0, 0.35            # lid spigot depth / fit clearance
 LIP_W = 3.0                           # spessore del labbro: e` una cornice, non un tappo
@@ -36,11 +36,17 @@ INNER_X, INNER_Y, INNER_Z = 105.0, 46.0, 26.5
 INNER_R = 6.0                         # raccordo degli spigoli verticali interni
 
 # ---- O-ring: corda di silicone Ø3 mm, giunta a colla nel solco.
-# Solco 3.8 x 2.2: schiacciamento 0.8 mm (27%), riempimento 85%. Il coperchio
-# va in battuta sulle due spalle da 1.3 mm, che fanno da fine corsa.
+# Solco 4.0 x 2.0: schiacciamento 1.0 mm (33%), riempimento 88%. Il coperchio
+# va in battuta sulle due spalle da 1.2 mm, che fanno da fine corsa.
+# Era 3.8 x 2.2 (27%, 85%): a norma sulla carta, ma senza margine per la
+# planarita` di un coperchio stampato lungo 118 mm - alla prova della doccia
+# passava acqua. Allargando il solco insieme all'approfondimento il
+# riempimento resta sotto il 90%: l'O-ring ha ancora dove spanciare e non
+# fa da distanziale impedendo la battuta. GROOVE_MID resta 3.2, quindi
+# raggi d'angolo e mezzeria non si muovono.
 ORING_D = 3.0
-GROOVE_W, GROOVE_D = 3.8, 2.2
-GROOVE_LAND = 1.3                     # spalla fra solco e faccia interna
+GROOVE_W, GROOVE_D = 4.0, 2.0
+GROOVE_LAND = 1.2                     # spalla fra solco e faccia interna
 
 # ---- viti M3: SEI lug esterni, tutti oltre il bordo esterno del solco.
 # La tenuta deve stare fra la vite e l'interno, altrimenti l'acqua che entra
@@ -494,8 +500,12 @@ for ob, fname in ((base, "case_base.stl"), (lid, "case_lid.stl")):
     bpy.ops.object.select_all(action="DESELECT")
     ob.select_set(True)
     bpy.context.view_layer.objects.active = ob
-    bpy.ops.wm.stl_export(filepath=os.path.join(OUT_DIR, fname),
-                          export_selected_objects=True, apply_modifiers=True)
+    if "stl_export" in dir(bpy.ops.wm):          # Blender >= 4.2
+        bpy.ops.wm.stl_export(filepath=os.path.join(OUT_DIR, fname),
+                              export_selected_objects=True, apply_modifiers=True)
+    else:                                        # Blender 4.0/4.1
+        bpy.ops.export_mesh.stl(filepath=os.path.join(OUT_DIR, fname),
+                                use_selection=True)
 
 # ---------------------------------------------------------------- report
 

@@ -1,9 +1,10 @@
 """Verifica geometrica: rigenera e sonda punti campione dentro/fuori il solido."""
-import bpy, bmesh, math
+import bpy, bmesh, math, os
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
-src = open("/home/rod/meshtastic-case/build_case.py").read()
+HERE = os.path.dirname(os.path.abspath(bpy.data.filepath or __file__))
+src = open(os.path.join(HERE, "build_case.py")).read()
 g = {"__name__": "__main__"}
 import io, contextlib
 with contextlib.redirect_stdout(io.StringIO()):
